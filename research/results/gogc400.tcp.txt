@@ -1,0 +1,24 @@
+TCP (LOGSINK=pipe), GOGC=100 (old) against GOGC=400 GOMEMLIMIT=512MiB (new), same binary:
+   │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/gogc400.tcp.old.txt │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/gogc400.tcp.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   29.71µ ± 3%   28.17µ ± 3%  -5.18% (p=0.000 n=10)
+
+   │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/gogc400.tcp.old.txt │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/gogc400.tcp.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   67.31k ± 3%   71.00k ± 3%  +5.47% (p=0.000 n=10)
+
+   │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/gogc400.tcp.old.txt │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/gogc400.tcp.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   52.00m ± 2%   54.50m ± 3%  +4.81% (p=0.000 n=10)
+
+   │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/gogc400.tcp.old.txt │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/gogc400.tcp.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   901.5 ± 3%   861.5 ± 3%  -4.44% (p=0.000 n=10)
+
+   │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/gogc400.tcp.old.txt │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/gogc400.tcp.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   4.482k ± 11%   3.674k ± 24%  -18.04% (p=0.009 n=10)
+
+   │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/gogc400.tcp.old.txt │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/gogc400.tcp.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   7.941k ± 33%   7.840k ± 33%  ~ (p=0.579 n=10)

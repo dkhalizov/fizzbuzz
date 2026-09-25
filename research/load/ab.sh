@@ -10,12 +10,12 @@ D=$(cd "$(dirname "$0")" && pwd)
 line() { # label result-line
   awk -v n="$1" -v lim=$LIMIT '{for(i=1;i<=NF;i++){split($i,kv,"=");v[kv[1]]=kv[2]}}
     END{printf "BenchmarkTCP/limit=%s 1 %.1f ns/op %.0f req/s %.3f GB/s %.1f p50-us %.1f p99-us %.1f p999-us\n",
-      lim, 2e9/v["rps"], v["rps"], v["bytes"]/v["dur_s"]/1e9, v["p50"], v["p99"], v["p999"]}' <<<"$2"
+      lim, 1e9*'${NCORES:-2}'/v["rps"], v["rps"], v["bytes"]/v["dur_s"]/1e9, v["p50"], v["p99"], v["p999"]}' <<<"$2"
 }
 for i in $(seq $RUNS); do
   for which in old new; do
     BIN=$OLD; [ $which = new ] && BIN=$NEW
-    R=$($D/run.sh $BIN $which $LIMIT $CONNS $DUR)
+    R=$($D/run.sh $BIN $which $LIMIT $CONNS $DUR ${SCPUS:-0,1} ${CCPUS:-2,3} ${GMP:-2})
     line $which "$R" >> $OUT.$which.txt
   done
 done

@@ -1,0 +1,21 @@
+   │ asynclog.inproc.old │ asynclog.inproc.new │
+   │   sec/op   │   sec/op   vs base   │
+Serve/limit=100-4   2.726µ ± 6%   2.725µ ± 10%   ~ (p=0.912 n=10)
+Serve/limit=10000-4   53.65µ ± 5%   54.62µ ±  5%   ~ (p=0.796 n=10)
+Serve/limit=1000000-4   5.074m ± 5%   5.207m ±  9%   ~ (p=0.063 n=10)
+geomean   90.53µ   91.85µ   +1.46%
+
+   │ asynclog.inproc.old │ asynclog.inproc.new │
+   │   B/op   │   B/op   vs base   │
+Serve/limit=100-4   735.5 ±  0%   755.5 ±  1%  +2.72% (p=0.000 n=10)
+Serve/limit=10000-4   731.5 ±  0%   731.0 ±  1%   ~ (p=0.924 n=10)
+Serve/limit=1000000-4   954.0 ± 22%   956.0 ± 22%   ~ (p=0.868 n=10)
+geomean   800.7   808.2   +0.95%
+
+   │ asynclog.inproc.old │ asynclog.inproc.new │
+   │   allocs/op   │   allocs/op   vs base   │
+Serve/limit=100-4   19.00 ± 0%   19.00 ± 0%   ~ (p=1.000 n=10) ¹
+Serve/limit=10000-4   19.00 ± 0%   19.00 ± 0%   ~ (p=1.000 n=10) ¹
+Serve/limit=1000000-4   19.00 ± 0%   19.00 ± 0%   ~ (p=1.000 n=10) ¹
+geomean   19.00   19.00   +0.00%
+¹ all samples are equal

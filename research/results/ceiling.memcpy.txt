@@ -1,0 +1,21 @@
+goos: linux
+goarch: amd64
+pkg: fizzbuzz/research/ceilings
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+   │ memcpy.txt │
+   │   sec/op   │
+Copy/size=32KiB-4   746.9n ±  3%
+Copy/size=256KiB-4   4.701µ ±  8%
+Copy/size=1024KiB-4   19.48µ ±  8%
+Copy/size=262144KiB-4   15.17m ±  5%
+Fill-4   9.490µ ± 14%
+geomean   25.04µ
+
+   │ memcpy.txt │
+   │   B/s   │
+Copy/size=32KiB-4   40.86Gi ±  3%
+Copy/size=256KiB-4   51.96Gi ±  8%
+Copy/size=1024KiB-4   50.13Gi ±  9%
+Copy/size=262144KiB-4   16.48Gi ±  5%
+Fill-4   3.216Gi ± 12%
+geomean   22.40Gi

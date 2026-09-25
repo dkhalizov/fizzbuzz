@@ -1,0 +1,25 @@
+TCP (LOGSINK=pipe): not significant. 0.25 us is 0.8% of the 31 us of core time per request, below the +-2% noise of the harness.
+
+   │ metrics.tcp.old.txt │ metrics.tcp.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   31.11µ ± 2%   30.96µ ± 2%  ~ (p=0.853 n=10)
+
+   │ metrics.tcp.old.txt │ metrics.tcp.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   64.29k ± 2%   64.59k ± 2%  ~ (p=0.853 n=10)
+
+   │ metrics.tcp.old.txt │ metrics.tcp.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   49.50m ± 3%   50.00m ± 2%  ~ (p=0.599 n=10)
+
+   │ metrics.tcp.old.txt │ metrics.tcp.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   941.0 ± 2%   937.5 ± 2%  ~ (p=0.467 n=10)
+
+   │ metrics.tcp.old.txt │ metrics.tcp.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   4.431k ± 5%   4.468k ± 9%  ~ (p=0.353 n=10)
+
+   │ metrics.tcp.old.txt │ metrics.tcp.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   6.982k ± 7%   6.968k ± 17%  ~ (p=0.739 n=10)

@@ -1,0 +1,25 @@
+TCP: LOGSINK=pipe.
+
+   │ plan0.tcp.old.txt │ plan0.tcp.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   31.17µ ± 5%   29.92µ ± 2%  -3.99% (p=0.023 n=10)
+
+   │ plan0.tcp.old.txt │ plan0.tcp.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   64.17k ± 5%   66.84k ± 2%  +4.16% (p=0.023 n=10)
+
+   │ plan0.tcp.old.txt │ plan0.tcp.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   50.00m ± 4%   52.00m ± 2%  +4.00% (p=0.012 n=10)
+
+   │ plan0.tcp.old.txt │ plan0.tcp.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   944.5 ± 4%   910.0 ± 2%  -3.65% (p=0.037 n=10)
+
+   │ plan0.tcp.old.txt │ plan0.tcp.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   4.519k ± 7%   4.421k ± 8%  ~ (p=0.579 n=10)
+
+   │ plan0.tcp.old.txt │ plan0.tcp.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   6.747k ± 24%   7.058k ± 11%  ~ (p=0.579 n=10)

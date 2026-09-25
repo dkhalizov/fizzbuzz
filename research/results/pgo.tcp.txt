@@ -1,0 +1,25 @@
+TCP (LOGSINK=pipe), same source, without and with -pgo:
+
+   │ pgo.tcp.old.txt │ pgo.tcp.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   28.79µ ± 1%   27.59µ ± 2%  -4.18% (p=0.000 n=10)
+
+   │ pgo.tcp.old.txt │ pgo.tcp.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   69.47k ± 1%   72.50k ± 1%  +4.37% (p=0.000 n=10)
+
+   │ pgo.tcp.old.txt │ pgo.tcp.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   54.00m ± 2%   56.00m ± 2%  +3.70% (p=0.000 n=10)
+
+   │ pgo.tcp.old.txt │ pgo.tcp.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   874.5 ± 2%   836.0 ± 2%  -4.40% (p=0.000 n=10)
+
+   │ pgo.tcp.old.txt │ pgo.tcp.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   4.162k ± 5%   4.138k ± 4%  ~ (p=0.529 n=10)
+
+   │ pgo.tcp.old.txt │ pgo.tcp.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   6.689k ± 8%   6.697k ± 60%  ~ (p=0.684 n=10)

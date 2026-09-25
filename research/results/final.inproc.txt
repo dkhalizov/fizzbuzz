@@ -1,0 +1,22 @@
+   │ final.in.old │ final.in.new │
+   │   sec/op   │   sec/op   vs base   │
+Serve/limit=100-4   3.687µ ± 4%   1.464µ ± 3%  -60.29% (p=0.000 n=10)
+Serve/limit=10000-4   52.17µ ± 5%   21.02µ ± 7%  -59.70% (p=0.000 n=10)
+Serve/limit=1000000-4   5.007m ± 8%   1.506m ± 6%  -69.93% (p=0.000 n=10)
+geomean   98.76µ   35.92µ   -63.63%
+
+   │ final.in.old │ final.in.new │
+   │   B/op   │   B/op   vs base   │
+Serve/limit=100-4   756.00 ± 0%   11.00 ± 27%  -98.54% (p=0.000 n=10)
+Serve/limit=10000-4   750.50 ± 0%   22.00 ±  5%  -97.07% (p=0.000 n=10)
+Serve/limit=1000000-4   976.5 ± 4%   897.5 ±  5%   -8.09% (p=0.002 n=10)
+geomean   821.3   60.11   -92.68%
+
+   │ final.in.old │ final.in.new │
+   │   allocs/op   │   allocs/op   vs base   │
+Serve/limit=100-4   21.00 ± 0%   0.00 ± 0%  -100.00% (p=0.000 n=10)
+Serve/limit=10000-4   21.000 ± 0%   2.000 ± 0%   -90.48% (p=0.000 n=10)
+Serve/limit=1000000-4   21.000 ± 0%   2.000 ± 0%   -90.48% (p=0.000 n=10)
+geomean   21.00   ?   ¹ ²
+¹ summaries must be >0 to compute geomean
+² ratios must be >0 to compute geomean

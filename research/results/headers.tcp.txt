@@ -1,0 +1,25 @@
+TCP: LOGSINK=pipe.
+
+   │ headers.tcp.old.txt │ headers.tcp.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   29.98µ ± 1%   29.46µ ± 2%  -1.72% (p=0.019 n=10)
+
+   │ headers.tcp.old.txt │ headers.tcp.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   66.72k ± 1%   67.88k ± 2%  +1.75% (p=0.019 n=10)
+
+   │ headers.tcp.old.txt │ headers.tcp.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   51.50m ± 1%   52.00m ± 2%  +0.97% (p=0.044 n=10)
+
+   │ headers.tcp.old.txt │ headers.tcp.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   908.5 ± 2%   895.0 ± 1%  ~ (p=0.055 n=10)
+
+   │ headers.tcp.old.txt │ headers.tcp.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   4.472k ± 19%   4.260k ± 5%  -4.75% (p=0.023 n=10)
+
+   │ headers.tcp.old.txt │ headers.tcp.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   7.513k ± 124%   7.043k ± 34%  ~ (p=0.280 n=10)

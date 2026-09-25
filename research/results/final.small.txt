@@ -1,0 +1,23 @@
+   │ final.small.old.txt │ final.small.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   43.88µ ± 3%   25.44µ ± 2%  -42.02% (p=0.000 n=10)
+
+   │ final.small.old.txt │ final.small.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   45.57k ± 3%   78.61k ± 2%  +72.48% (p=0.000 n=10)
+
+   │ final.small.old.txt │ final.small.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   35.00m ± 3%   60.50m ± 2%  +72.86% (p=0.000 n=10)
+
+   │ final.small.old.txt │ final.small.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   1332.0 ± 3%   776.0 ± 4%  -41.74% (p=0.000 n=10)
+
+   │ final.small.old.txt │ final.small.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   6.051k ± 5%   3.119k ± 14%  -48.44% (p=0.000 n=10)
+
+   │ final.small.old.txt │ final.small.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   8.544k ± 6%   6.487k ± 11%  -24.09% (p=0.000 n=10)

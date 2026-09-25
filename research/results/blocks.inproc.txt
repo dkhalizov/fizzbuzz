@@ -1,0 +1,22 @@
+   │ blocks.inproc.old │ blocks.inproc.new │
+   │   sec/op   │   sec/op   vs base   │
+Serve/limit=100-4   1.588µ ±  6%   1.552µ ±  6%   -2.30% (p=0.015 n=10)
+Serve/limit=10000-4   54.60µ ±  6%   19.32µ ± 11%  -64.62% (p=0.000 n=10)
+Serve/limit=1000000-4   5.457m ± 10%   1.188m ±  5%  -78.22% (p=0.000 n=10)
+geomean   77.92µ   32.90µ   -57.78%
+
+   │ blocks.inproc.old │ blocks.inproc.new │
+   │   B/op   │   B/op   vs base   │
+Serve/limit=100-4   12.00 ± 25%   12.00 ±  8%   ~ (p=0.222 n=10)
+Serve/limit=10000-4   23.00 ±  9%   22.00 ±  5%   ~ (p=0.401 n=10)
+Serve/limit=1000000-4   249.0 ± 87%   412.0 ± 16%  +65.46% (p=0.000 n=10)
+geomean   40.96   47.73   +16.54%
+
+   │ blocks.inproc.old │ blocks.inproc.new │
+   │   allocs/op   │   allocs/op   vs base   │
+Serve/limit=100-4   0.000 ± 0%   0.000 ± 0%   ~ (p=1.000 n=10) ¹
+Serve/limit=10000-4   2.000 ± 0%   2.000 ± 0%   ~ (p=1.000 n=10) ¹
+Serve/limit=1000000-4   2.000 ± 0%   2.000 ± 0%   ~ (p=1.000 n=10) ¹
+geomean   ²   +0.00%   ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
