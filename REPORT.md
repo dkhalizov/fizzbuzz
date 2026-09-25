@@ -119,6 +119,7 @@ significant (p ≥ 0.05). The TCP gain is for RPS at limit=100 unless noted.
 | 22 | Rover response cache for small responses | 198k → 279k RPS at 2 cores (1 run each) | 32 MB for each loop | Not verified with benchstat |
 | 23 | Cache the most frequent large response | Calculated only (see Phase 3) | 88 MB, or 14.5 MB gzip | Not built |
 | 24 | Per-P sharding of the stats counter in the service | Not tried: the profile shows no contention (`counter.Record` 0.7%) | | Not needed |
+| 26 | Remove the request log (after 2) | −8.3% / +2.5% n.s. (p=0.052) | No record of single requests | FAILED by the rules; kept as the owner's decision |
 | 25 | fasthttp or gnet on a sub-branch | Not done. Rover replaces net/http completely and shows the limit that these libraries can approach | | Not done |
 
 ## Phase 2: small responses
@@ -250,6 +251,32 @@ alone is near the resolution of the load test.
 
 Do not merge rover or items 8 and 11. They replace or depend on the internals of
 the HTTP stack.
+
+## Rules of AGENTS.md and the README that this branch breaks
+
+- **Contract drift, not documented until now: the write deadline.** The README
+  says that each 32 KiB write of a response has a 10 s deadline. With block
+  templates, one write is up to 1 MiB. A client must now accept 1 MiB in 10 s
+  (about 100 KB/s), not 32 KiB (3.2 KB/s). Slow clients can be disconnected.
+  A fix: write blocks in 32 KiB pieces. The raw ceiling at 32 KiB writes is
+  8.8 GB/s, so the cost is probably small, but it is not measured.
+- "The README is the API contract": the README Performance section still
+  describes the 32 KiB stream buffer and the old M1 numbers. The batched log
+  (commit "batch request log lines") changed the log without a README change.
+- "Put each new setting in config.go and in the README table": GOGC=400 is an
+  ENV line in the Dockerfile, not a setting in config.go.
+- "PGO and GOARM64 failed this test and are not in the build": default.pgo is
+  in the build now, with new evidence. AGENTS.md is not updated.
+- "Remove an optimization that does not measure faster": items 4, 8 and 10 are
+  faster in-process only; their TCP gain is below the resolution. Item 26 is
+  kept against the rule, by the owner's decision.
+- "Each statsStore must pass TestStoreContract and TestStoreSaturation": the
+  sharded statistics of rover are not a statsStore and do not run these tests.
+  The same request on two loops costs two entries of the budget.
+- "Easy to maintain" (the brief): item 8 depends on an unexported net/http
+  constant; rover copies the parser and duplicates the HTTP layer; the block
+  templates add 200 lines of dense code.
+- The AGENTS.md map and "How agents helped" do not list `research/`.
 
 ## Notes
 
