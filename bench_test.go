@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -16,6 +17,10 @@ type discardWriter struct{ h http.Header }
 func (d *discardWriter) Header() http.Header         { return d.h }
 func (d *discardWriter) Write(b []byte) (int, error) { return len(b), nil }
 func (d *discardWriter) WriteHeader(int)             {}
+
+// SetWriteDeadline makes the benchmark take the same path as a real
+// connection. Without it, each write builds an ErrNotSupported error.
+func (d *discardWriter) SetWriteDeadline(time.Time) error { return nil }
 
 // BenchmarkServe drives the whole request path in-process: parsing,
 // validation, stats, metrics, JSON logging and generation.
