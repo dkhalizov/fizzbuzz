@@ -88,18 +88,14 @@ func newMetrics(reg *prometheus.Registry) *metrics {
 	return m
 }
 
-// observe logs and measures each request, also the 404 and 405 of gin. The
-// route label is the route template, not the raw path, so the labels stay bounded.
-func observe(log *requestLog, m *metrics) gin.HandlerFunc {
+// observe measures each request, also the 404 and 405 of gin. The route
+// label is the route template, not the raw path, so the labels stay bounded.
+// There is no log line for each request: the metrics count every request.
+func observe(m *metrics) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		c.Next()
-		end := time.Now()
-		elapsed := end.Sub(start)
-
-		status := c.Writer.Status()
 		// An empty or unknown route gets the label "unmatched".
-		m.observe(c.FullPath(), c.Request.Method, status, elapsed)
-		log.log(end, c.Request.Method, c.Request.URL.Path, status, elapsed)
+		m.observe(c.FullPath(), c.Request.Method, c.Writer.Status(), time.Since(start))
 	}
 }

@@ -31,11 +31,6 @@ func run(logger *slog.Logger) error {
 	}
 	store := newStore(cfg, logger)
 	app := newServer(cfg, logger, store)
-	app.reqLog = newRequestLog(os.Stdout)
-	logCtx, stopLog := context.WithCancel(context.Background())
-	logDone := make(chan struct{})
-	go func() { app.reqLog.run(logCtx); close(logDone) }()
-	defer func() { stopLog(); <-logDone }() // the last lines, after Shutdown
 	flushCtx, stopFlush := context.WithCancel(context.Background())
 	defer stopFlush()
 	flushDone := make(chan struct{})
