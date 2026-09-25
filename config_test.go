@@ -27,6 +27,11 @@ func TestLoadConfig(t *testing.T) {
 	if _, err := loadConfig(env(map[string]string{"STATS_STORE": "redis"})); err == nil {
 		t.Error("redis without REDIS_ADDR was accepted")
 	}
+	for _, kv := range []map[string]string{{"MAX_LIMIT": "4294967296"}, {"STATS_MAX_BYTES": "1000000000000"}} {
+		if _, err := loadConfig(env(kv)); err == nil {
+			t.Errorf("%v was accepted", kv)
+		}
+	}
 	if _, err := loadConfig(env(map[string]string{"STATS_FLUSH_INTERVAL": "0s"})); err == nil {
 		t.Error("STATS_FLUSH_INTERVAL=0s was accepted") // time.NewTicker panics on it
 	}

@@ -66,12 +66,12 @@ All settings come from environment variables. If a value is not valid, the serve
 | Variable | Default | Meaning |
 |---|---|---|
 | `PORT` | `8080` | Listen port |
-| `MAX_LIMIT` | `10000000` | Largest `limit` |
+| `MAX_LIMIT` | `10000000` | Largest `limit`. Must be less than 2³² |
 | `MAX_STR_BYTES` | `1024` | Longest `str1` or `str2`, in bytes |
 | `MAX_RESPONSE_BYTES` | `268435456` | Largest response (256 MiB) |
 | `MAX_INFLIGHT_BYTES` | `1073741824` | Response bytes in transfer at the same time before `503` (1 GiB). Must be at least `MAX_RESPONSE_BYTES` |
 | `STATS_STORE` | `memory` | `memory` (one count for each process) or `redis` (one count for all replicas) |
-| `STATS_MAX_BYTES` | `67108864` | Memory budget for statistics (64 MiB) |
+| `STATS_MAX_BYTES` | `67108864` | Memory budget for statistics (64 MiB). Must be less than 608 GiB |
 | `STATS_FLUSH_INTERVAL` | `100ms` | With the Redis store, the time between two batches of counts |
 | `REDIS_ADDR` | | `host:port`. Necessary when `STATS_STORE=redis` |
 | `REDIS_TIMEOUT` | `100ms` | Timeout for each statistics call |
@@ -202,7 +202,9 @@ By default, each process keeps its own count in memory. With `STATS_STORE=redis`
 
 If Redis is not available, `/fizzbuzz` continues to operate and `/stats` returns `503`. The replica keeps its counts and sends them when Redis is available again. The server logs the Redis error one time in 10 s or less often.
 
-The counts are exact and use `STATS_MAX_BYTES` or less. [Limitations](#limitations) gives two rare cases in which the Redis store loses or repeats counts. Each different request uses a part of the budget that depends on the size of its strings. When the budget is full, `/stats` returns `503`, because an exact winner is no longer known. The memory store stays in this state until restart. The Redis store stays in this state until you delete its keys. `/fizzbuzz` continues to operate, and the server logs one warning. With Redis, the counts that wait in a replica use the same budget. If they fill it, the same requests would also fill the budget in Redis, so the store saturates.
+The counts are exact and use `STATS_MAX_BYTES` or less. [Limitations](#limitations) gives two rare cases in which the Redis store loses or repeats counts. When the budget is full, `/stats` returns `503`, because an exact winner is no longer known. The memory store stays in this state until restart. The Redis store stays in this state until you delete its keys. `/fizzbuzz` continues to operate, and the server logs one warning. With Redis, the counts that wait in a replica use the same budget. If they fill it, the same requests would also fill the budget in Redis, so the store saturates.
+
+The memory store keeps each different set of `int1`, `int2`, `str1` and `str2` one time. Requests that differ only in `limit` share it. The budget charges 48 bytes for each different request. For each new set, it also charges 152 bytes and the heap size of the two strings. These numbers are the heap bytes of the Go maps at their lowest load. `TestCounterBudget` fails if the real memory is larger. The store keeps its own copy of the strings, because a parsed string can keep the whole query string or body in memory. The default budget holds 1.4 million requests that differ only in `limit`, 310,000 requests with new short strings, or 29,800 requests with new 1 KiB strings.
 
 `int1` and `int2` are JSON numbers up to 2⁶³−1. JavaScript clients lose precision above 2⁵³.
 

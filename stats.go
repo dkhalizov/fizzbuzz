@@ -3,17 +3,12 @@ package main
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"sync"
 
 	"fizzbuzz/internal/fizzbuzz"
 )
-
-// The budget counts bytes, not keys, because each string can have 1 KiB.
-const statsKeyOverhead = 128 // Params struct, count and map slot
-
-func memoryCost(p fizzbuzz.Params) int64 {
-	return statsKeyOverhead + int64(len(p.Str1)+len(p.Str2))
-}
 
 var errStatsUnavailable = errors.New("statistics unavailable: too many distinct requests")
 
@@ -30,13 +25,30 @@ type statsStore interface {
 	Top(ctx context.Context) (p fizzbuzz.Params, hits uint64, err error)
 }
 
+// The budget charges the heap bytes of one map entry when the Go map has its
+// lowest load, measured and rounded up. TestCounterBudget fails if the real
+// memory exceeds the charge.
+const (
+	prefixCost = 152 // map[prefix]uint32 entry, without the strings
+	countCost  = 48  // map[uint64]uint64 entry
+)
+
+// Requests that differ only in limit share one prefix. Each different limit
+// then costs one count.
+type prefix struct {
+	int1, int2 int
+	str1, str2 string
+}
+
 // counter is the in-memory statsStore, one for each process. When a new key
 // would exceed the memory budget, the counter saturates. Top then fails until
 // restart, because an exact winner is no longer known.
 type counter struct {
 	mu        sync.Mutex
-	counts    map[fizzbuzz.Params]uint64
+	prefixes  map[prefix]uint32
+	counts    map[uint64]uint64 // prefix ID << 32 | limit
 	top       fizzbuzz.Params
+	topKey    uint64 // 0 before the first hit: limit is at least 1
 	topHits   uint64
 	usedBytes int64
 	maxBytes  int64
@@ -44,7 +56,7 @@ type counter struct {
 }
 
 func newCounter(maxBytes int64) *counter {
-	return &counter{counts: make(map[fizzbuzz.Params]uint64), maxBytes: maxBytes}
+	return &counter{prefixes: make(map[prefix]uint32), counts: make(map[uint64]uint64), maxBytes: maxBytes}
 }
 
 func (c *counter) Record(p fizzbuzz.Params) bool {
@@ -53,21 +65,37 @@ func (c *counter) Record(p fizzbuzz.Params) bool {
 	if c.saturated {
 		return false
 	}
-	n, ok := c.counts[p]
-	if !ok {
-		cost := memoryCost(p)
+	pk := prefix{p.Int1, p.Int2, p.Str1, p.Str2}
+	id, known := c.prefixes[pk]
+	if !known {
+		id = uint32(len(c.prefixes))
+	}
+	key := uint64(id)<<32 | uint64(p.Limit)
+	n, counted := c.counts[key]
+	if !counted {
+		cost := int64(countCost)
+		if !known {
+			cost += prefixCost + allocSize(len(p.Str1)) + allocSize(len(p.Str2))
+		}
 		if c.usedBytes+cost > c.maxBytes {
-			c.saturated, c.counts = true, nil
+			c.saturated, c.prefixes, c.counts = true, nil, nil
 			return true
 		}
 		c.usedBytes += cost
+		if !known {
+			pk.str1, pk.str2 = strings.Clone(p.Str1), strings.Clone(p.Str2)
+			c.prefixes[pk] = id
+		}
 	}
 	n++
-	c.counts[p] = n
+	c.counts[key] = n
 	// Counts only increase, so only the key of this call can take the lead.
 	// On a tie, the current leader stays.
 	if n > c.topHits {
-		c.top, c.topHits = p, n
+		if key != c.topKey {
+			c.top, c.topKey = ownStrings(p), key
+		}
+		c.topHits = n
 	}
 	return false
 }
@@ -82,3 +110,14 @@ func (c *counter) Top(context.Context) (fizzbuzz.Params, uint64, error) {
 	}
 	return c.top, c.topHits, nil
 }
+
+// ownStrings copies the strings of p. A parsed string can share the memory of
+// the whole query string or body, which can have MAX_HEADER_BYTES.
+func ownStrings(p fizzbuzz.Params) fizzbuzz.Params {
+	p.Str1, p.Str2 = strings.Clone(p.Str1), strings.Clone(p.Str2)
+	return p
+}
+
+// allocSize is the heap size of an n-byte allocation: Go rounds it up to a
+// size class.
+func allocSize(n int) int64 { return int64(cap(slices.Grow([]byte(nil), n))) }

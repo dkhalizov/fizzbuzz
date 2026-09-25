@@ -12,6 +12,13 @@ import (
 	"fizzbuzz/internal/fizzbuzz"
 )
 
+// The Redis budget counts bytes, not keys, because each string can have 1 KiB.
+const statsKeyOverhead = 128 // bytes for one key, without its strings
+
+func memoryCost(p fizzbuzz.Params) int64 {
+	return statsKeyOverhead + int64(len(p.Str1)+len(p.Str2))
+}
+
 // One hash tag keeps all keys in the same Redis Cluster slot.
 var redisKeys = []string{"{fizzbuzz}:stats:counts", "{fizzbuzz}:stats:used", "{fizzbuzz}:stats:saturated"}
 
@@ -107,7 +114,7 @@ func (s *redisStore) Record(p fizzbuzz.Params) bool {
 		}
 		s.usedBytes += cost
 		h = &pendingHits{}
-		s.pending[p] = h
+		s.pending[ownStrings(p)] = h
 	}
 	h.n++
 	return false
