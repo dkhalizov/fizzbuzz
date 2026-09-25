@@ -1,0 +1,13 @@
+# The service with the Redis statistics store, as it runs with several replicas.
+services:
+  fizzbuzz:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      STATS_STORE: redis
+      REDIS_ADDR: redis:6379
+    depends_on:
+      - redis
+  redis:
+    image: redis:8-alpine

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>FizzBuzz</title>
+<meta name="description" content="Generalized FizzBuzz. The server streams the response with an exact Content-Length. Each element is one pixel.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/app.css">
+<script src="/app.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <h1 class="mark"><span class="t1">Fizz</span><span class="t2">Buzz</span></h1>
+  <p class="lede">Multiples of <var>int1</var> become <var>str1</var>, multiples of <var>int2</var> become <var>str2</var>, multiples of both become <var>str1str2</var>. The server streams the array and sends its exact size before the first byte. Each element below is one pixel.</p>
+</header>
+
+<main class="layout">
+  <section class="controls" aria-label="Request">
+    <form id="form" novalidate>
+      <div class="pair">
+        <label>int1 <input name="int1" inputmode="numeric" autocomplete="off" value="3"></label>
+        <label>int2 <input name="int2" inputmode="numeric" autocomplete="off" value="5"></label>
+      </div>
+      <label>limit <input name="limit" inputmode="numeric" autocomplete="off" value="4000"></label>
+      <div class="pair">
+        <label>str1 <input name="str1" autocomplete="off" value="fizz"></label>
+        <label>str2 <input name="str2" autocomplete="off" value="buzz"></label>
+      </div>
+
+      <fieldset class="method">
+        <legend>Method</legend>
+        <label><input type="radio" name="method" value="GET" checked><span>GET</span></label>
+        <label><input type="radio" name="method" value="QUERY"><span>QUERY</span></label>
+      </fieldset>
+      <p class="hint" id="method-hint">Parameters in the URL query string.</p>
+
+      <button type="submit" id="run" class="run">Send request</button>
+      <p class="error" id="error" role="alert" hidden></p>
+    </form>
+
+    <div class="presets" aria-label="Examples">
+      <button type="button" data-p="3,5,4000,fizz,buzz">3 and 5</button>
+      <button type="button" data-p="4,6,40000,fizz,buzz">4 and 6</button>
+      <button type="button" data-p="7,7,20000,same,same">7 and 7</button>
+      <button type="button" data-p="5,7,40000,fizz,buzz">5 and 7</button>
+      <button type="button" data-p="3,5,1000000,fizz,buzz">1 million</button>
+      <button type="button" data-p="3,5,10000000,fizz,buzz">10 million</button>
+    </div>
+
+    <section class="exchange" aria-label="HTTP exchange">
+      <div class="exchange-head">
+        <h2>Exchange</h2>
+        <button type="button" id="copy" class="ghost">Copy as curl</button>
+      </div>
+      <pre id="wire" class="wire" tabindex="0"></pre>
+    </section>
+
+    <section class="stats" aria-label="Most frequent request">
+      <h2>Most frequent request</h2>
+      <p id="stats" class="stats-body">No requests counted yet.</p>
+      <button type="button" id="stats-load" class="ghost" hidden>Load request</button>
+    </section>
+  </section>
+
+  <section class="view" aria-label="Response">
+    <div class="meter">
+      <div class="bar"><div id="fill" class="fill"></div></div>
+      <dl class="figures">
+        <div><dt>Received</dt><dd id="f-got">–</dd></div>
+        <div><dt>First byte</dt><dd id="f-ttfb">–</dd></div>
+        <div><dt>Total time</dt><dd id="f-time">–</dd></div>
+        <div><dt>Throughput</dt><dd id="f-rate">–</dd></div>
+      </dl>
+      <p id="status" class="status" aria-live="polite"></p>
+    </div>
+
+    <figure class="map">
+      <div class="frame" id="frame">
+        <canvas id="canvas" width="1" height="1" role="img" aria-label="Pattern map"></canvas>
+        <output id="probe" class="probe" hidden></output>
+      </div>
+      <figcaption class="map-bar">
+        <ul class="legend">
+          <li><i class="sw n"></i>number <b id="c0">0</b></li>
+          <li><i class="sw a"></i><span id="l1">str1</span> <b id="c1">0</b></li>
+          <li><i class="sw b"></i><span id="l2">str2</span> <b id="c2">0</b></li>
+          <li><i class="sw ab"></i>both <b id="c3">0</b></li>
+        </ul>
+        <div class="width">
+          <label for="cols">Row width</label>
+          <input type="range" id="cols" min="1" max="100" value="15">
+          <output id="cols-out" for="cols">15</output>
+          <button type="button" id="snap" class="ghost">Snap to period</button>
+        </div>
+        <p class="hint width-hint">When the row width is a multiple of the period, the pattern shows as columns. At other widths, it shows as diagonals.</p>
+      </figcaption>
+    </figure>
+
+    <section class="head" aria-label="First bytes of the response">
+      <h2>First bytes</h2>
+      <pre id="raw" class="raw" tabindex="0"></pre>
+    </section>
+  </section>
+</main>
+
+<footer class="foot">
+  <p><code>GET /fizzbuzz</code>, <code>QUERY /fizzbuzz</code> (RFC 10008), <code>GET /stats</code>, <code>GET /healthz</code>. The map shows at most 4 million elements. For a larger response, the page still reads and counts all bytes.</p>
+</footer>
+</body>
+</html>

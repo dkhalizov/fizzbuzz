@@ -1,0 +1,39 @@
+# The HPA sets the replica count. It needs metrics-server. The targets are a
+# percent of the requests below. In a load test, a pod served about 125
+# requests a second at 90m, so 20 pods serve about 2500. The 2000m that 20
+# pods request is free on the two nodes that run fizzbuzz. With loadtest/stress.js,
+# the live instance held 2000 requests a second for 40 s with no errors.
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 20
+  targetCPU: 70
+  targetMemory: 70
+
+image:
+  repository: ghcr.io/dkhalizov/fizzbuzz
+  tag: latest
+  # When set, the digest replaces the tag. Pin it in production.
+  digest: ""
+  # Empty: Kubernetes pulls latest on each start and a digest one time.
+  pullPolicy: ""
+
+# Environment variables, see the README configuration table. With more than one
+# replica, set STATS_STORE=redis and REDIS_ADDR. The memory store counts each
+# pod apart, so /stats then answers for one pod only.
+env:
+  STATS_STORE: memory
+
+service:
+  port: 80
+
+# No CPU limit: under a burst, a pod uses idle cores while the HPA adds pods.
+resources:
+  requests:
+    cpu: 100m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
