@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,6 +14,58 @@ import (
 type metrics struct {
 	requests *prometheus.CounterVec
 	duration *prometheus.HistogramVec
+	// The resolved series, filled on first use. WithLabelValues hashes the
+	// label values and looks up a map on each call. Series appear in /metrics
+	// only after their first request, as before.
+	reqCache [len(routeLabels)][len(methodLabels)][len(statusLabels)]atomic.Pointer[prometheus.Counter]
+	durCache [len(routeLabels)][len(methodLabels)]atomic.Pointer[prometheus.Observer]
+}
+
+// The fixed label sets. The last entry of each is the fallback. A client
+// controls the method, so an unknown method is "other".
+var (
+	routeLabels  = [...]string{"/fizzbuzz", "/stats", "/healthz", "/metrics", "/", "/app.js", "/app.css", "unmatched"}
+	methodLabels = [...]string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut, http.MethodPatch,
+		http.MethodDelete, http.MethodOptions, http.MethodConnect, http.MethodTrace, "QUERY", "other"}
+	statusLabels = [...]int{200, 400, 404, 405, 413, 415, 503, 0}
+)
+
+func labelIndex[T comparable](set []T, v T) int {
+	for i, x := range set[:len(set)-1] {
+		if x == v {
+			return i
+		}
+	}
+	return len(set) - 1
+}
+
+// methodLabel maps client-controlled methods onto a fixed label set.
+func methodLabel(m string) string { return methodLabels[labelIndex(methodLabels[:], m)] }
+
+// observe records one request. A status outside statusLabels skips the
+// cache.
+func (m *metrics) observe(route, method string, status int, elapsed time.Duration) {
+	ri, mi, si := labelIndex(routeLabels[:], route), labelIndex(methodLabels[:], method), labelIndex(statusLabels[:], status)
+	if statusLabels[si] != status {
+		m.requests.WithLabelValues(routeLabels[ri], methodLabels[mi], strconv.Itoa(status)).Inc()
+	} else {
+		slot := &m.reqCache[ri][mi][si]
+		c := slot.Load()
+		if c == nil {
+			v := m.requests.WithLabelValues(routeLabels[ri], methodLabels[mi], strconv.Itoa(status))
+			c = &v
+			slot.Store(c)
+		}
+		(*c).Inc()
+	}
+	slot := &m.durCache[ri][mi]
+	o := slot.Load()
+	if o == nil {
+		v := m.duration.WithLabelValues(routeLabels[ri], methodLabels[mi])
+		o = &v
+		slot.Store(o)
+	}
+	(*o).Observe(elapsed.Seconds())
 }
 
 func newMetrics(reg *prometheus.Registry) *metrics {
@@ -45,23 +98,8 @@ func observe(log *requestLog, m *metrics) gin.HandlerFunc {
 		elapsed := end.Sub(start)
 
 		status := c.Writer.Status()
-		route := c.FullPath()
-		if route == "" {
-			route = "unmatched"
-		}
-		method := methodLabel(c.Request.Method)
-		m.requests.WithLabelValues(route, method, strconv.Itoa(status)).Inc()
-		m.duration.WithLabelValues(route, method).Observe(elapsed.Seconds())
+		// An empty or unknown route gets the label "unmatched".
+		m.observe(c.FullPath(), c.Request.Method, status, elapsed)
 		log.log(end, c.Request.Method, c.Request.URL.Path, status, elapsed)
 	}
-}
-
-// methodLabel maps client-controlled methods onto a fixed label set.
-func methodLabel(m string) string {
-	switch m {
-	case http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut, http.MethodPatch,
-		http.MethodDelete, http.MethodOptions, http.MethodConnect, http.MethodTrace, "QUERY":
-		return m
-	}
-	return "other"
 }
