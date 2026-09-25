@@ -10,19 +10,20 @@ import (
 )
 
 type config struct {
-	Port              string
-	Limits            fizzbuzz.Limits
-	MaxInflightBytes  int64
-	WriteChunkTimeout time.Duration
-	ReadHeaderTimeout time.Duration
-	ReadTimeout       time.Duration
-	IdleTimeout       time.Duration
-	ShutdownTimeout   time.Duration
-	MaxHeaderBytes    int
-	StatsStore        string // "memory" or "redis"
-	StatsMaxBytes     int64
-	RedisAddr         string
-	RedisTimeout      time.Duration
+	Port               string
+	Limits             fizzbuzz.Limits
+	MaxInflightBytes   int64
+	WriteChunkTimeout  time.Duration
+	ReadHeaderTimeout  time.Duration
+	ReadTimeout        time.Duration
+	IdleTimeout        time.Duration
+	ShutdownTimeout    time.Duration
+	MaxHeaderBytes     int
+	StatsStore         string // "memory" or "redis"
+	StatsMaxBytes      int64
+	StatsFlushInterval time.Duration
+	RedisAddr          string
+	RedisTimeout       time.Duration
 }
 
 // loadConfig reads the environment over the defaults and reports every bad
@@ -36,13 +37,14 @@ func loadConfig(getenv func(string) string) (config, error) {
 		ReadHeaderTimeout: 5 * time.Second,
 		// QUERY reads a body. Also, net/http reads up to 256 KiB of an unread
 		// body before it responds.
-		ReadTimeout:     10 * time.Second,
-		IdleTimeout:     120 * time.Second,
-		ShutdownTimeout: 25 * time.Second, // under the 30 s Kubernetes grace period
-		MaxHeaderBytes:  16 << 10,         // two percent-encoded 1 KiB strings fit
-		StatsStore:      "memory",
-		StatsMaxBytes:   64 << 20,
-		RedisTimeout:    100 * time.Millisecond,
+		ReadTimeout:        10 * time.Second,
+		IdleTimeout:        120 * time.Second,
+		ShutdownTimeout:    25 * time.Second, // under the 30 s Kubernetes grace period
+		MaxHeaderBytes:     16 << 10,         // two percent-encoded 1 KiB strings fit
+		StatsStore:         "memory",
+		StatsMaxBytes:      64 << 20,
+		StatsFlushInterval: 100 * time.Millisecond,
+		RedisTimeout:       100 * time.Millisecond,
 	}
 	var errs []error
 	set := func(key string, parse func(string) error) {
@@ -76,6 +78,7 @@ func loadConfig(getenv func(string) string) (config, error) {
 	set("MAX_HEADER_BYTES", num(&c.MaxHeaderBytes))
 	set("STATS_STORE", str(&c.StatsStore))
 	set("STATS_MAX_BYTES", i64(&c.StatsMaxBytes))
+	set("STATS_FLUSH_INTERVAL", dur(&c.StatsFlushInterval))
 	set("REDIS_ADDR", str(&c.RedisAddr))
 	set("REDIS_TIMEOUT", dur(&c.RedisTimeout))
 
@@ -84,6 +87,8 @@ func loadConfig(getenv func(string) string) (config, error) {
 		errs = append(errs, errors.New("MAX_INFLIGHT_BYTES must be >= MAX_RESPONSE_BYTES, or the largest response could never run"))
 	case c.StatsStore != "memory" && c.StatsStore != "redis":
 		errs = append(errs, fmt.Errorf("STATS_STORE=%q: must be memory or redis", c.StatsStore))
+	case c.StatsFlushInterval <= 0:
+		errs = append(errs, errors.New("STATS_FLUSH_INTERVAL must be positive"))
 	case c.StatsStore == "redis" && c.RedisAddr == "":
 		errs = append(errs, errors.New("REDIS_ADDR is required when STATS_STORE=redis"))
 	}

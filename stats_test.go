@@ -23,8 +23,20 @@ func stores(t *testing.T, maxBytes int64) map[string]statsStore {
 	mr := miniredis.RunT(t)
 	return map[string]statsStore{
 		"memory": newCounter(maxBytes),
-		"redis":  &redisStore{rdb: redis.NewClient(&redis.Options{Addr: mr.Addr()}), maxBytes: maxBytes},
+		"redis":  newRedisStore(redis.NewClient(&redis.Options{Addr: mr.Addr()}), maxBytes),
 	}
+}
+
+// record records one hit and flushes it, so every store reports saturation
+// from the same call.
+func record(t *testing.T, s statsStore, p fizzbuzz.Params) (saturatedNow bool) {
+	t.Helper()
+	sat := s.Record(p)
+	flushSat, err := s.Flush(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return sat || flushSat
 }
 
 func TestStoreContract(t *testing.T) {
@@ -36,9 +48,7 @@ func TestStoreContract(t *testing.T) {
 				t.Fatalf("empty: hits=%d err=%v", hits, err)
 			}
 			for _, p := range []fizzbuzz.Params{keyA, odd, keyA, odd, odd} {
-				if _, err := s.Record(ctx, p); err != nil {
-					t.Fatal(err)
-				}
+				record(t, s, p)
 			}
 			if p, hits, err := s.Top(ctx); err != nil || p != odd || hits != 3 {
 				t.Fatalf("top = %+v with %d hits (err %v), want odd with 3", p, hits, err)
@@ -51,13 +61,13 @@ func TestStoreSaturation(t *testing.T) {
 	ctx := context.Background()
 	for name, s := range stores(t, 200) { // one key fits, two do not
 		t.Run(name, func(t *testing.T) {
-			if sat, err := s.Record(ctx, keyA); sat || err != nil {
-				t.Fatalf("first key: saturated=%v err=%v", sat, err)
+			if record(t, s, keyA) {
+				t.Fatal("first key reported saturation")
 			}
-			if sat, _ := s.Record(ctx, keyB); !sat {
+			if !record(t, s, keyB) {
 				t.Fatal("second key did not report saturation")
 			}
-			if sat, _ := s.Record(ctx, keyA); sat {
+			if record(t, s, keyA) {
 				t.Fatal("saturation reported twice")
 			}
 			if _, _, err := s.Top(ctx); !errors.Is(err, errStatsUnavailable) {
@@ -71,7 +81,7 @@ func TestStoreSaturation(t *testing.T) {
 func TestCounterTie(t *testing.T) {
 	c := newCounter(1 << 20)
 	for _, k := range []fizzbuzz.Params{keyA, keyB, keyB, keyA} {
-		_, _ = c.Record(context.Background(), k)
+		c.Record(k)
 	}
 	if p, hits, _ := c.Top(context.Background()); p != keyB || hits != 2 {
 		t.Fatalf("top = %+v with %d hits, want B with 2", p, hits)
@@ -90,7 +100,7 @@ func TestCounterConcurrent(t *testing.T) {
 				if (g+i)%2 == 1 {
 					k = keyB
 				}
-				_, _ = c.Record(ctx, k)
+				c.Record(k)
 				_, _, _ = c.Top(ctx)
 			}
 		})

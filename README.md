@@ -72,6 +72,7 @@ All settings come from environment variables. If a value is not valid, the serve
 | `MAX_INFLIGHT_BYTES` | `1073741824` | Response bytes in transfer at the same time before `503` (1 GiB). Must be at least `MAX_RESPONSE_BYTES` |
 | `STATS_STORE` | `memory` | `memory` (one count for each process) or `redis` (one count for all replicas) |
 | `STATS_MAX_BYTES` | `67108864` | Memory budget for statistics (64 MiB) |
+| `STATS_FLUSH_INTERVAL` | `100ms` | With the Redis store, the time between two batches of counts |
 | `REDIS_ADDR` | | `host:port`. Necessary when `STATS_STORE=redis` |
 | `REDIS_TIMEOUT` | `100ms` | Timeout for each statistics call |
 | `READ_HEADER_TIMEOUT`, `READ_TIMEOUT`, `IDLE_TIMEOUT` | `5s`, `10s`, `120s` | Connection timeouts |
@@ -88,6 +89,7 @@ Each limit has a reason. If the reason is a fact that can change, a test fails w
 | `MAX_LIMIT` | The largest power of ten at which the classic request (`3`, `5`, `fizz`, `buzz`) fits the response maximum. At 10,000,000 it is 88 MB. At 100,000,000 it is 934 MB. | `TestDefaultLimits` |
 | `MAX_RESPONSE_BYTES` | A JavaScript client that calls `response.json()` or `response.text()` holds the body as one string. V8 limits a string to 536,870,888 characters (512 MiB − 24). 256 MiB is half of 512 MiB. | `TestDefaultLimits` |
 | `MAX_STR_BYTES`, `MAX_HEADER_BYTES` | Cloudflare limits a URL to 16 KB. Percent encoding makes one byte into 3 bytes or less. The largest request has two 1 KiB strings and the largest integers. It is 6,278 bytes. | `TestHeaderFitsStrings` |
+| `STATS_FLUSH_INTERVAL` | A choice. It is the maximum age of the counts from other replicas, and the maximum loss when a replica stops without a normal shutdown. With 20 replicas, Redis gets 200 batches per second or less. | None |
 | `MAX_INFLIGHT_BYTES` | A choice: four responses of the maximum size at the same time. The memory for each response is constant, so this limit protects the uplink. The uplink of the live instance sends 48 MB/s. At that rate, 1 GiB takes 22 s. | None |
 
 The size of a response depends on `limit` and on the two strings. Thus a request can fail when each parameter is in range. The defaults give this guarantee: every request fits if `str1` and `str2` together have 23 bytes or less after JSON escaping. The worst case is `int1=int2=1`, where each element is `"str1str2",`. With 23 bytes, the response is 10,000,000 × 26 + 1 = 260,000,001 bytes. With 24 bytes, it is 270,000,001 bytes, which is more than 256 MiB.
@@ -194,9 +196,13 @@ Two requests are the same if their parsed parameters are the same. The order and
 
 If more than one request has the top count, `/stats` returns one of them. The API does not specify which one.
 
-By default, each process keeps its own count in memory. With `STATS_STORE=redis`, all replicas share one exact count in a Redis sorted set. One atomic Lua script records each hit. If Redis is not available, `/fizzbuzz` continues to operate and `/stats` returns `503`. The server logs the Redis error one time in 10 s or less often.
+By default, each process keeps its own count in memory. With `STATS_STORE=redis`, all replicas share one exact count in a Redis sorted set. A request does not wait for Redis. Each replica counts in its memory and sends its counts to Redis in one batch every `STATS_FLUSH_INTERVAL`. One atomic Lua script applies each batch. Each batch has a sequence number, so a retry after a lost reply does not count the batch again.
 
-The counts are exact and use `STATS_MAX_BYTES` or less. Each different request uses a part of the budget that depends on the size of its strings. When the budget is full, `/stats` returns `503`, because an exact winner is no longer known. The memory store stays in this state until restart. The Redis store stays in this state until you delete its keys. `/fizzbuzz` continues to operate, and the server logs one warning.
+`/stats` sends the counts of its replica before it reads Redis. Thus a client sees its own requests. The counts from other replicas can be up to `STATS_FLUSH_INTERVAL` old. At a normal shutdown, the server sends its last counts.
+
+If Redis is not available, `/fizzbuzz` continues to operate and `/stats` returns `503`. The replica keeps its counts and sends them when Redis is available again. The server logs the Redis error one time in 10 s or less often.
+
+The counts are exact and use `STATS_MAX_BYTES` or less. [Limitations](#limitations) gives two rare cases in which the Redis store loses or repeats counts. Each different request uses a part of the budget that depends on the size of its strings. When the budget is full, `/stats` returns `503`, because an exact winner is no longer known. The memory store stays in this state until restart. The Redis store stays in this state until you delete its keys. `/fizzbuzz` continues to operate, and the server logs one warning. With Redis, the counts that wait in a replica use the same budget. If they fill it, the same requests would also fill the budget in Redis, so the store saturates.
 
 `int1` and `int2` are JSON numbers up to 2⁶³−1. JavaScript clients lose precision above 2⁵³.
 
@@ -214,11 +220,14 @@ Measurements on an Apple M1, with `int1=3` and `int2=5`, on one core:
 
 The memory for each request is constant for all limits. On the same machine, a `[]string` with `json.Marshal` uses about 36 ms and 53 MB for one million elements. PGO and `GOARM64=v8.4` gave no net gain in benchmarks, so the build does not use them.
 
+With the Redis store, a request does not wait for Redis. On a 4-core Intel Xeon with Redis on the same machine, a request with `limit=100` takes 5.4 µs. A design with one script call for each request took 108 µs, and Redis used 5 µs of CPU for each hit. With batches, the load on Redis depends on the number of replicas and different requests, not on the traffic.
+
 ## Limitations
 
 - The memory store keeps one count for each process, and a restart resets it. Behind a load balancer, use the Redis store.
 - When the statistics budget is full, `/stats` stays unavailable. For the memory store, this continues until restart. For Redis, it continues until you delete the keys.
-- With the Redis store, each `/fizzbuzz` request adds one round trip to Redis.
+- With the Redis store, a replica that stops without a normal shutdown loses the counts of its last `STATS_FLUSH_INTERVAL`. Nothing reports this loss.
+- With the Redis store, Redis keeps the sequence number of a replica for 24 h. If a replica cannot reach Redis for longer than that after Redis applied a batch, the retry counts the batch again.
 - The binary needs a 64-bit platform. The compiler checks this.
 
 ## Deployment notes
