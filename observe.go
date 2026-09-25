@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math/rand/v2"
 	"net/http"
 	"strconv"
 	"time"
@@ -53,10 +52,7 @@ func observe(log *requestLog, m *metrics) gin.HandlerFunc {
 		method := methodLabel(c.Request.Method)
 		m.requests.WithLabelValues(route, method, strconv.Itoa(status)).Inc()
 		m.duration.WithLabelValues(route, method).Observe(elapsed.Seconds())
-		// Sampling: every error, and 1 in 100 other requests.
-		if status >= 400 || rand.Uint32N(100) == 0 {
-			log.log(end, c.Request.Method, c.Request.URL.Path, status, elapsed)
-		}
+		log.log(end, c.Request.Method, c.Request.URL.Path, status, elapsed)
 	}
 }
 
