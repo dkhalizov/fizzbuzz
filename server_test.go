@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"fizzbuzz/internal/fizzbuzz"
 )
 
 // newTestServer returns a server with its own counter and registry, so tests
@@ -48,8 +51,30 @@ func TestFizzbuzz(t *testing.T) {
 	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
 		t.Errorf("Content-Type = %q", ct)
 	}
-	if cl := rec.Header().Get("Content-Length"); cl != strconv.Itoa(len(want)) {
-		t.Errorf("Content-Length = %q, want %d", cl, len(want))
+}
+
+// Small responses leave Content-Length to net/http. On the wire, each
+// response must still have the exact length and no chunked encoding.
+func TestContentLengthOnWire(t *testing.T) {
+	_, h := newTestServer(t)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	for n := 1; n <= 400; n++ { // sizes from 5 bytes to 2.4 KiB, across 2048
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			req, _ := http.NewRequest(method, srv.URL+"/fizzbuzz?int1=3&int2=5&str1=fizz&str2=buzz&limit="+strconv.Itoa(n), nil)
+			resp, err := srv.Client().Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			want := fizzbuzz.JSONSize(fizzbuzz.Params{Int1: 3, Int2: 5, Limit: n, Str1: "fizz", Str2: "buzz"})
+			if resp.ContentLength != want || len(resp.TransferEncoding) > 0 ||
+				method == http.MethodGet && int64(len(body)) != want {
+				t.Fatalf("%s limit=%d: Content-Length %d, Transfer-Encoding %v, body %d, want %d",
+					method, n, resp.ContentLength, resp.TransferEncoding, len(body), want)
+			}
+		}
 	}
 }
 

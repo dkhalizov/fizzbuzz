@@ -145,10 +145,17 @@ var (
 	acceptQueryHeader = []string{queryMediaType}[:1:1]
 )
 
+// autoLengthBytes is bufferBeforeChunkingSize of net/http. When a handler
+// returns and its whole body is in that buffer, net/http sets Content-Length
+// itself, without an allocation. TestContentLengthOnWire checks the limit.
+const autoLengthBytes = 2048
+
 func setBodyHeaders(c *gin.Context, size int64) {
 	h := c.Writer.Header()
 	h["Content-Type"] = jsonContentType
-	h["Content-Length"] = []string{strconv.FormatInt(size, 10)}
+	if size > autoLengthBytes || c.Request.Method == http.MethodHead {
+		h["Content-Length"] = []string{strconv.FormatInt(size, 10)}
+	}
 }
 
 type paramsJSON struct {
