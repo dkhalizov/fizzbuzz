@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -38,11 +37,12 @@ func newMetrics(reg *prometheus.Registry) *metrics {
 
 // observe logs and measures each request, also the 404 and 405 of gin. The
 // route label is the route template, not the raw path, so the labels stay bounded.
-func observe(log *slog.Logger, m *metrics) gin.HandlerFunc {
+func observe(log *requestLog, m *metrics) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		c.Next()
-		elapsed := time.Since(start)
+		end := time.Now()
+		elapsed := end.Sub(start)
 
 		status := c.Writer.Status()
 		route := c.FullPath()
@@ -52,12 +52,7 @@ func observe(log *slog.Logger, m *metrics) gin.HandlerFunc {
 		method := methodLabel(c.Request.Method)
 		m.requests.WithLabelValues(route, method, strconv.Itoa(status)).Inc()
 		m.duration.WithLabelValues(route, method).Observe(elapsed.Seconds())
-		log.LogAttrs(c.Request.Context(), slog.LevelInfo, "request",
-			slog.String("method", c.Request.Method),
-			slog.String("path", c.Request.URL.Path),
-			slog.Int("status", status),
-			slog.Float64("duration_ms", float64(elapsed.Microseconds())/1000),
-		)
+		log.log(end, c.Request.Method, c.Request.URL.Path, status, elapsed)
 	}
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -20,20 +21,21 @@ import (
 type server struct {
 	cfg        config
 	log        *slog.Logger
+	reqLog     *requestLog // one line for each request; main sets stdout
 	store      statsStore
 	inflight   atomic.Int64 // response bytes being streamed
 	lastErrLog atomic.Int64
 }
 
 func newServer(cfg config, log *slog.Logger, store statsStore) *server {
-	return &server{cfg: cfg, log: log, store: store}
+	return &server{cfg: cfg, log: log, store: store, reqLog: &requestLog{w: io.Discard}}
 }
 
 func (s *server) handler(reg *prometheus.Registry) http.Handler {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.HandleMethodNotAllowed = true
-	r.Use(observe(s.log, newMetrics(reg)))
+	r.Use(observe(s.reqLog, newMetrics(reg)))
 	r.NoRoute(func(c *gin.Context) { c.JSON(http.StatusNotFound, gin.H{"error": "not found"}) })
 	r.NoMethod(func(c *gin.Context) { c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"}) })
 	r.GET("/fizzbuzz", acceptQuery, s.fizzbuzz)

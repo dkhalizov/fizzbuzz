@@ -31,6 +31,7 @@ func run(logger *slog.Logger) error {
 	}
 	store := newStore(cfg, logger)
 	app := newServer(cfg, logger, store)
+	app.reqLog.w = os.Stdout
 	flushCtx, stopFlush := context.WithCancel(context.Background())
 	defer stopFlush()
 	flushDone := make(chan struct{})
