@@ -137,9 +137,18 @@ func (s *server) logStoreErr(err error) {
 	}
 }
 
+// Shared header values. A direct map assignment skips the key
+// canonicalization and the []string allocation of Header.Set. The capacity is
+// 1, so an Add elsewhere copies the slice and does not change the shared one.
+var (
+	jsonContentType   = []string{"application/json"}[:1:1]
+	acceptQueryHeader = []string{queryMediaType}[:1:1]
+)
+
 func setBodyHeaders(c *gin.Context, size int64) {
-	c.Header("Content-Type", "application/json")
-	c.Header("Content-Length", strconv.FormatInt(size, 10))
+	h := c.Writer.Header()
+	h["Content-Type"] = jsonContentType
+	h["Content-Length"] = []string{strconv.FormatInt(size, 10)}
 }
 
 type paramsJSON struct {
