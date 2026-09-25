@@ -43,6 +43,16 @@ func check(t *testing.T, p Params) {
 	if err != nil || n != int64(len(want)) || !bytes.Equal(b.Bytes(), want) {
 		t.Fatalf("WriteJSON mismatch for %+v (n=%d, err=%v):\n got %.200s\nwant %.200s", p, n, err, b.Bytes(), want)
 	}
+	// The same through Prepare, with no size limit.
+	lim := Limits{MaxLimit: math.MaxInt, MaxStrBytes: math.MaxInt, MaxResponseBytes: math.MaxInt64}
+	r, err := p.Prepare(lim)
+	if err != nil || r.Size != int64(len(want)) {
+		t.Fatalf("Prepare(%+v) = size %d, %v; want %d", p, r.Size, err, len(want))
+	}
+	b.Reset()
+	if n, err := r.WriteTo(&b); err != nil || n != r.Size || !bytes.Equal(b.Bytes(), want) {
+		t.Fatalf("Response.WriteTo mismatch for %+v (n=%d, err=%v)", p, n, err)
+	}
 }
 
 func TestExample(t *testing.T) {
@@ -326,4 +336,81 @@ func FuzzSizeLimit(f *testing.F) {
 			t.Fatalf("error %q does not suggest %d", err, m)
 		}
 	})
+}
+
+// TestBlocks covers the block templates with holes of every width from 1 to
+// 7 and blocks that cross a power of ten. The fuzz targets use short limits,
+// so they reach only small widths.
+func TestBlocks(t *testing.T) {
+	for _, c := range []struct{ a, b, n, k int }{
+		{3, 5, 300_000, 3},   // widths 1 to 3
+		{64, 63, 400_000, 1}, // widths 1 to 5
+		{8, 7, 2_000_000, 3}, // widths 1 to 4
+		{3, 5, 1_000_003, 4}, // a tail after the last block
+		{4, 6, 700_000, 4},   // not coprime
+		{7, 7, 120_000, 3},   // equal divisors
+		{2, 5, 3_000_000, 4},
+	} {
+		p := Params{Int1: c.a, Int2: c.b, Limit: c.n, Str1: "fizz", Str2: "buzz"}
+		pl := newPlan(p)
+		if bl, ok := newBlocks(&pl); !ok || bl.k != c.k {
+			t.Fatalf("%+v: blocks %v, k=%d", c, ok, bl.k)
+		}
+		check(t, p)
+	}
+	// k=1 up to 10,000,000: holes of widths 6 and 7. The output is compared as
+	// a hash, element by element with the reference.
+	p := Params{Int1: 64, Int2: 63, Limit: 10_000_000, Str1: "f", Str2: "b"}
+	var got, want countingHash
+	if n, err := WriteJSON(&got, p); err != nil || n != JSONSize(p) {
+		t.Fatalf("n=%d err=%v", n, err)
+	}
+	refStream{w: &want}.write(p)
+	if got != want {
+		t.Fatal("output differs from the reference at limit 10,000,000")
+	}
+}
+
+// countingHash is an FNV-1a hash of a stream, so a test can compare 200 MB
+// outputs without holding them.
+type countingHash struct {
+	h uint64
+	n int64
+}
+
+func (c *countingHash) Write(b []byte) (int, error) {
+	if c.h == 0 {
+		c.h = 14695981039346656037
+	}
+	for _, x := range b {
+		c.h = (c.h ^ uint64(x)) * 1099511628211
+	}
+	c.n += int64(len(b))
+	return len(b), nil
+}
+
+// refStream writes json.Marshal of reference(p) one element at a time.
+type refStream struct{ w io.Writer }
+
+func (r refStream) write(p Params) {
+	_, _ = r.w.Write([]byte("["))
+	for i := 1; i <= p.Limit; i++ {
+		var s string
+		switch {
+		case i%p.Int1 == 0 && i%p.Int2 == 0:
+			s = p.Str1 + p.Str2
+		case i%p.Int1 == 0:
+			s = p.Str1
+		case i%p.Int2 == 0:
+			s = p.Str2
+		default:
+			s = strconv.Itoa(i)
+		}
+		e, _ := json.Marshal(s)
+		if i > 1 {
+			_, _ = r.w.Write([]byte(","))
+		}
+		_, _ = r.w.Write(e)
+	}
+	_, _ = r.w.Write([]byte("]"))
 }

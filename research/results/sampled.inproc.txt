@@ -1,0 +1,21 @@
+   │ sampled.inproc.old │ sampled.inproc.new │
+   │   sec/op   │   sec/op   vs base   │
+Serve/limit=100-4   2.738µ ± 3%   2.678µ ± 4%   ~ (p=0.165 n=10)
+Serve/limit=10000-4   53.15µ ± 4%   52.97µ ± 5%   ~ (p=0.971 n=10)
+Serve/limit=1000000-4   5.021m ± 7%   5.016m ± 7%   ~ (p=0.971 n=10)
+geomean   90.06µ   89.28µ   -0.88%
+
+   │ sampled.inproc.old │ sampled.inproc.new │
+   │   B/op   │   B/op   vs base   │
+Serve/limit=100-4   755.5 ±  0%   743.5 ±  0%  -1.59% (p=0.000 n=10)
+Serve/limit=10000-4   730.0 ±  1%   732.0 ±  1%   ~ (p=0.338 n=10)
+Serve/limit=1000000-4   949.0 ± 22%   930.5 ± 20%   ~ (p=0.779 n=10)
+geomean   805.9   797.1   -1.09%
+
+   │ sampled.inproc.old │ sampled.inproc.new │
+   │   allocs/op   │   allocs/op   vs base   │
+Serve/limit=100-4   19.00 ± 0%   19.00 ± 0%   ~ (p=1.000 n=10) ¹
+Serve/limit=10000-4   19.00 ± 0%   19.00 ± 0%   ~ (p=1.000 n=10) ¹
+Serve/limit=1000000-4   19.00 ± 0%   19.00 ± 0%   ~ (p=1.000 n=10) ¹
+geomean   19.00   19.00   +0.00%
+¹ all samples are equal

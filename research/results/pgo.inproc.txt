@@ -1,0 +1,22 @@
+   │ pgo.inproc.old │ pgo.inproc.new │
+   │   sec/op   │   sec/op   vs base   │
+Serve/limit=100-4   1.583µ ±  3%   1.579µ ± 7%   ~ (p=0.383 n=10)
+Serve/limit=10000-4   52.25µ ± 10%   54.17µ ± 5%   ~ (p=0.247 n=10)
+Serve/limit=1000000-4   5.252m ±  6%   5.406m ± 7%   ~ (p=0.481 n=10)
+geomean   75.73µ   77.33µ   +2.12%
+
+   │ pgo.inproc.old │ pgo.inproc.new │
+   │   B/op   │   B/op   vs base   │
+Serve/limit=100-4   12.00 ±  8%   12.00 ±  8%   ~ (p=0.697 n=10)
+Serve/limit=10000-4   23.00 ±  9%   23.00 ±  9%   ~ (p=0.628 n=10)
+Serve/limit=1000000-4   241.5 ± 87%   251.0 ± 87%   ~ (p=0.341 n=10)
+geomean   40.55   41.07   +1.29%
+
+   │ pgo.inproc.old │ pgo.inproc.new │
+   │   allocs/op   │   allocs/op   vs base   │
+Serve/limit=100-4   0.000 ± 0%   0.000 ± 0%   ~ (p=1.000 n=10) ¹
+Serve/limit=10000-4   2.000 ± 0%   2.000 ± 0%   ~ (p=1.000 n=10) ¹
+Serve/limit=1000000-4   2.000 ± 0%   2.000 ± 0%   ~ (p=1.000 n=10) ¹
+geomean   ²   +0.00%   ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean

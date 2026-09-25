@@ -1,0 +1,23 @@
+   │ v3.tcp.old.txt │ v3.tcp.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   29.59µ ± 3%   29.50µ ± 4%  ~ (p=0.953 n=10)
+
+   │ v3.tcp.old.txt │ v3.tcp.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   67.60k ± 3%   67.80k ± 4%  ~ (p=0.953 n=10)
+
+   │ v3.tcp.old.txt │ v3.tcp.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   52.00m ± 4%   52.00m ± 4%  ~ (p=0.610 n=10)
+
+   │ v3.tcp.old.txt │ v3.tcp.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   903.5 ± 3%   895.0 ± 4%  ~ (p=0.839 n=10)
+
+   │ v3.tcp.old.txt │ v3.tcp.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   4.218k ± 8%   4.354k ± 10%  ~ (p=0.643 n=10)
+
+   │ v3.tcp.old.txt │ v3.tcp.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   6.702k ± 13%   6.912k ± 8%  ~ (p=0.481 n=10)

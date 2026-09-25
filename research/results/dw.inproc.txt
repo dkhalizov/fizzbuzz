@@ -1,0 +1,22 @@
+   │ dw.inproc.old │ dw.inproc.new │
+   │   sec/op   │   sec/op   vs base   │
+Serve/limit=100-4   1.717µ ±  6%   1.543µ ±  8%  -10.14% (p=0.004 n=10)
+Serve/limit=10000-4   53.31µ ±  6%   52.45µ ± 11%   ~ (p=0.971 n=10)
+Serve/limit=1000000-4   5.374m ± 12%   5.165m ±  3%   ~ (p=0.481 n=10)
+geomean   78.93µ   74.76µ   -5.28%
+
+   │ dw.inproc.old │ dw.inproc.new │
+   │   B/op   │   B/op   vs base   │
+Serve/limit=100-4   62.00 ±  3%   12.00 ±  8%  -80.65% (p=0.000 n=10)
+Serve/limit=10000-4   71.00 ±  3%   23.00 ±  9%  -67.61% (p=0.000 n=10)
+Serve/limit=1000000-4   277.0 ± 72%   237.0 ± 86%  -14.44% (p=0.027 n=10)
+geomean   106.8   40.29   -62.29%
+
+   │ dw.inproc.old │ dw.inproc.new │
+   │   allocs/op   │   allocs/op   vs base   │
+Serve/limit=100-4   2.000 ± 0%   0.000 ± 0%  -100.00% (p=0.000 n=10)
+Serve/limit=10000-4   4.000 ± 0%   2.000 ± 0%   -50.00% (p=0.000 n=10)
+Serve/limit=1000000-4   4.000 ± 0%   2.000 ± 0%   -50.00% (p=0.000 n=10)
+geomean   3.175   ?   ¹ ²
+¹ summaries must be >0 to compute geomean
+² ratios must be >0 to compute geomean

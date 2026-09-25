@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -41,6 +43,18 @@ func TestMetricLabels(t *testing.T) {
 	} {
 		if got := requests(c.route, c.method, c.status); got != 1 {
 			t.Errorf("http_requests_total%v = %v, want 1", c, got)
+		}
+	}
+}
+
+// Each route of the server must have its own label. Otherwise its requests
+// count as "unmatched".
+func TestRouteLabels(t *testing.T) {
+	s := newServer(testConfig(t), slog.New(slog.DiscardHandler), newCounter(1<<20))
+	h := s.handler(prometheus.NewRegistry()).(*gin.Engine)
+	for _, r := range h.Routes() {
+		if i := labelIndex(routeLabels[:], r.Path); i == len(routeLabels)-1 {
+			t.Errorf("route %s has no entry in routeLabels", r.Path)
 		}
 	}
 }

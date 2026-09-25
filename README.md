@@ -234,7 +234,7 @@ With the Redis store, a request does not wait for Redis. On a 4-core Intel Xeon 
 
 ## Deployment notes
 
-- The logs are JSON on stdout. There is one line for each request (method, path, status, duration), and lines for start, shutdown and errors. The logs do not contain query strings.
+- The logs are JSON on stdout: lines for start, shutdown and errors. There is no line for each request, because the log write cost more than the rest of a small request. `http_requests_total` and `http_request_duration_seconds` count every request by route, method and status.
 - The server disconnects slow clients. These are the limits:
   - Headers: 5 s
   - Full request: 10 s

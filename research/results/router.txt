@@ -1,0 +1,31 @@
+   │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/router.txt │
+   │   sec/op   │
+Route/gin/hit-4   42.39n ± 4%
+Route/gin/404-4   72.79n ± 6%
+Route/servemux/hit-4   73.95n ± 9%
+Route/servemux/404-4   769.9n ± 6%
+Route/switch/hit-4   3.714n ± 6%
+Route/switch/404-4   3.798n ± 8%
+geomean   36.79n
+
+   │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/router.txt │
+   │   B/op   │
+Route/gin/hit-4   0.000 ± 0%
+Route/gin/404-4   0.000 ± 0%
+Route/servemux/hit-4   0.000 ± 0%
+Route/servemux/404-4   224.0 ± 0%
+Route/switch/hit-4   0.000 ± 0%
+Route/switch/404-4   0.000 ± 0%
+geomean   ¹
+¹ summaries must be >0 to compute geomean
+
+   │ /tmp/claude-0/-home-user-fizzbuzz/e155f598-bf77-533b-ac23-1bef64723b2c/scratchpad/bench/router.txt │
+   │   allocs/op   │
+Route/gin/hit-4   0.000 ± 0%
+Route/gin/404-4   0.000 ± 0%
+Route/servemux/hit-4   0.000 ± 0%
+Route/servemux/404-4   14.00 ± 0%
+Route/switch/hit-4   0.000 ± 0%
+Route/switch/404-4   0.000 ± 0%
+geomean   ¹
+¹ summaries must be >0 to compute geomean

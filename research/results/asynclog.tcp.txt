@@ -1,0 +1,25 @@
+TCP numbers in the table above use LOGSINK=pipe (stdout is a pipe to a reader, as in a container).
+
+   │ asynclog.tcp.old.txt │ asynclog.tcp.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   41.61µ ± 5%   31.89µ ± 2%  -23.36% (p=0.000 n=10)
+
+   │ asynclog.tcp.old.txt │ asynclog.tcp.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   48.06k ± 5%   62.72k ± 2%  +30.49% (p=0.000 n=10)
+
+   │ asynclog.tcp.old.txt │ asynclog.tcp.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   37.00m ± 5%   48.50m ± 3%  +31.08% (p=0.000 n=10)
+
+   │ asynclog.tcp.old.txt │ asynclog.tcp.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   1247.0 ± 5%   971.0 ± 2%  -22.13% (p=0.000 n=10)
+
+   │ asynclog.tcp.old.txt │ asynclog.tcp.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   5.987k ± 7%   4.607k ± 5%  -23.05% (p=0.000 n=10)
+
+   │ asynclog.tcp.old.txt │ asynclog.tcp.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   8.875k ± 31%   7.181k ± 50%  -19.08% (p=0.035 n=10)

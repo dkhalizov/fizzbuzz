@@ -45,15 +45,18 @@ func (c *dcounter) inc() {
 	c.d[k]++
 }
 
+// gen is a value, so it and its plan can stay on the stack of the caller.
 type gen struct {
-	pl           *plan
+	a, b         int
+	e1, e2, e12  []byte
 	i            int // next element
 	next1, next2 int // next multiples of a and b, >= i
 	c            dcounter
 }
 
-func newGen(pl *plan, lo int) *gen {
-	g := &gen{pl: pl, i: lo}
+func newGen(pl *plan, lo int) gen {
+	e := pl.elems()
+	g := gen{a: pl.a, b: pl.b, e1: e[:pl.i1:pl.i1], e2: e[pl.i1:pl.i2:pl.i2], e12: e[pl.i2:pl.end], i: lo}
 	g.next1 = ((lo-1)/pl.a + 1) * pl.a
 	g.next2 = ((lo-1)/pl.b + 1) * pl.b
 	g.c.set(lo)
@@ -61,7 +64,7 @@ func newGen(pl *plan, lo int) *gen {
 }
 
 func (pl *plan) maxElem() int {
-	return max(maxNumElem, len(pl.e1), len(pl.e2), len(pl.e12))
+	return max(maxNumElem, pl.len1(), pl.len2(), pl.len12())
 }
 
 // fill emits elements g.i..hi from pos while pos <= stop. buf needs
@@ -83,19 +86,18 @@ func (g *gen) fill(buf []byte, pos, stop, hi int) int {
 }
 
 func (g *gen) event() []byte {
-	pl := g.pl
 	var e []byte
 	if g.i == g.next1 {
-		g.next1 += pl.a
+		g.next1 += g.a
 		if g.i == g.next2 {
-			g.next2 += pl.b
-			e = pl.e12
+			g.next2 += g.b
+			e = g.e12
 		} else {
-			e = pl.e1
+			e = g.e1
 		}
 	} else {
-		g.next2 += pl.b
-		e = pl.e2
+		g.next2 += g.b
+		e = g.e2
 	}
 	g.c.inc()
 	g.i++
@@ -111,6 +113,10 @@ var bufPool = sync.Pool{New: func() any {
 // exactly JSONSize(p). It stops at the first write error.
 func WriteJSON(w io.Writer, p Params) (int64, error) {
 	pl := newPlan(p)
+	return writePlan(w, &pl)
+}
+
+func writePlan(w io.Writer, pl *plan) (int64, error) {
 	// The periodic path buffers a full period. Thus it runs only when a period
 	// fits the stream buffer.
 	if min(pl.a, pl.b) == 1 && pl.rangeBytes(1, min(max(pl.a, pl.b), pl.n)) <= streamBuf {
@@ -122,26 +128,68 @@ func WriteJSON(w io.Writer, p Params) (int64, error) {
 	if need := streamBuf + pl.maxElem() + 1; len(buf) < need { // unvalidated long strings
 		buf = make([]byte, need)
 	}
-	var written int64
+	st := stream{w: w, buf: buf}
+	bl, useBlocks := newBlocks(pl)
+	if useBlocks {
+		bl.blockBufs = blockPool.Get().(*blockBufs)
+		bl.elems = append(bl.elems[:0], pl.elems()...)
+		defer blockPool.Put(bl.blockBufs)
+	}
 	g := newGen(pl, 1)
-	first := true
 	for g.i <= pl.n {
-		pos := g.fill(buf, 0, streamBuf, pl.n)
-		if first {
-			buf[0] = '['
-			first = false
+		hi := pl.n
+		if useBlocks {
+			if s := g.i - 1; s > 0 && s%bl.L == 0 && s+bl.L <= pl.n {
+				if b := bl.render(s); b != nil {
+					if err := st.flush(); err != nil {
+						return st.written, err
+					}
+					if err := st.write(b); err != nil {
+						return st.written, err
+					}
+					g = newGen(pl, s+bl.L+1)
+					continue
+				}
+			}
+			hi = min(pl.n, ((g.i-1)/bl.L+1)*bl.L) // up to the next block start
 		}
-		if g.i > pl.n {
-			buf[pos] = ']'
-			pos++
-		}
-		m, err := w.Write(buf[:pos])
-		written += int64(m)
-		if err != nil {
-			return written, err
+		st.pos = g.fill(st.buf, st.pos, streamBuf, hi)
+		if st.pos > streamBuf {
+			if err := st.flush(); err != nil {
+				return st.written, err
+			}
 		}
 	}
-	return written, nil
+	st.buf[st.pos] = ']'
+	st.pos++
+	return st.written, st.flush()
+}
+
+// stream sends buffered elements. The first byte of the output is the comma
+// of the first element, which becomes '['.
+type stream struct {
+	w       io.Writer
+	buf     []byte
+	pos     int
+	written int64
+}
+
+func (st *stream) flush() error {
+	if st.pos == 0 {
+		return nil
+	}
+	err := st.write(st.buf[:st.pos])
+	st.pos = 0
+	return err
+}
+
+func (st *stream) write(b []byte) error {
+	if st.written == 0 {
+		b[0] = '['
+	}
+	m, err := st.w.Write(b)
+	st.written += int64(m)
+	return err
 }
 
 // writePeriodic handles int1 == 1 or int2 == 1. Then the bytes repeat every

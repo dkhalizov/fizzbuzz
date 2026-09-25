@@ -9,32 +9,58 @@ import (
 type plan struct {
 	a, b, n int
 	l       int // lcm(a, b) if <= n, else 0
-	// The replacements, encoded with their leading comma, for example `,"fizz"`.
-	e1, e2, e12 []byte
+	// The replacements, encoded with their leading comma, for example
+	// `,"fizz"`, one after the other: e1 is elems()[:i1], e2 is
+	// elems()[i1:i2] and e12 is elems()[i2:end]. Short plain strings stay in
+	// inline, so a plan needs no heap allocation. The plan keeps offsets, not
+	// slices into itself, so a copy of a plan stays valid.
+	i1, i2, end int
+	heap        []byte
+	inline      [inlineElems]byte
 }
 
-func newPlan(p Params) *plan {
-	pl := &plan{a: p.Int1, b: p.Int2, n: p.Limit, l: lcmCapped(p.Int1, p.Int2, p.Limit)}
-	buf := make([]byte, 0, 2*(len(p.Str1)+len(p.Str2))+9)
-	buf = appendElem(buf, p.Str1)
-	i1 := len(buf)
-	buf = appendElem(buf, p.Str2)
-	i2 := len(buf)
-	buf = appendElem(buf, p.Str1, p.Str2)
-	pl.e1, pl.e2, pl.e12 = buf[:i1:i1], buf[i1:i2:i2], buf[i2:]
+// inlineElems holds the three elements when str1 and str2 have 43 bytes
+// together or less and need no escaping.
+const inlineElems = 96
+
+func newPlan(p Params) plan {
+	pl := plan{a: p.Int1, b: p.Int2, n: p.Limit, l: lcmCapped(p.Int1, p.Int2, p.Limit)}
+	if n := 2*(len(p.Str1)+len(p.Str2)) + 9; n <= inlineElems && isPlain(p.Str1) && isPlain(p.Str2) {
+		// The result aliases pl.inline. Only its length is kept, so pl stays on the stack.
+		_, pl.i1, pl.i2, pl.end = appendElems(pl.inline[:0:inlineElems], p.Str1, p.Str2)
+	} else {
+		pl.heap, pl.i1, pl.i2, pl.end = appendElems(make([]byte, 0, n), p.Str1, p.Str2)
+	}
 	return pl
 }
+
+// appendElems appends e1, e2 and e12 and returns the offsets of their ends.
+func appendElems(buf []byte, s1, s2 string) (b []byte, i1, i2, end int) {
+	buf = appendElem(buf, s1)
+	i1 = len(buf)
+	buf = appendElem(buf, s2)
+	i2 = len(buf)
+	buf = appendElem(buf, s1, s2)
+	return buf, i1, i2, len(buf)
+}
+
+func (pl *plan) elems() []byte {
+	if pl.heap != nil {
+		return pl.heap
+	}
+	return pl.inline[:pl.end]
+}
+
+func (pl *plan) len1() int  { return pl.i1 }
+func (pl *plan) len2() int  { return pl.i2 - pl.i1 }
+func (pl *plan) len12() int { return pl.end - pl.i2 }
 
 // appendElem copies plain printable ASCII directly and hands anything else to
 // encoding/json, so escaping (HTML-safe < included) matches json.Marshal.
 func appendElem(dst []byte, parts ...string) []byte {
 	plain := true
 	for _, s := range parts {
-		for i := 0; i < len(s); i++ {
-			if c := s[i]; c < 0x20 || c > 0x7e || c == '"' || c == '\\' || c == '<' || c == '>' || c == '&' {
-				plain = false
-			}
-		}
+		plain = plain && isPlain(s)
 	}
 	dst = append(dst, ',')
 	if !plain {
@@ -46,6 +72,16 @@ func appendElem(dst []byte, parts ...string) []byte {
 		dst = append(dst, s...)
 	}
 	return append(dst, '"')
+}
+
+// isPlain reports whether json.Marshal copies s without escapes.
+func isPlain(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; c < 0x20 || c > 0x7e || c == '"' || c == '\\' || c == '<' || c == '>' || c == '&' {
+			return false
+		}
+	}
+	return true
 }
 
 func gcd(a, b int) int {
@@ -81,7 +117,7 @@ func (pl *plan) rangeBytes(lo, hi int) int64 {
 	}
 	cnt := func(m int) int64 { return int64(multiples(hi, m) - multiples(lo-1, m)) }
 	c1, c2, c12 := cnt(pl.a), cnt(pl.b), cnt(pl.l)
-	total := (c1-c12)*int64(len(pl.e1)) + (c2-c12)*int64(len(pl.e2)) + c12*int64(len(pl.e12))
+	total := (c1-c12)*int64(pl.len1()) + (c2-c12)*int64(pl.len2()) + c12*int64(pl.len12())
 
 	bandLo := 1
 	for d := 1; bandLo <= hi; d++ {
@@ -108,5 +144,6 @@ func JSONSize(p Params) int64 {
 	if p.Limit <= 0 {
 		return 2
 	}
-	return newPlan(p).rangeBytes(1, p.Limit) + 1 // first comma becomes '[', plus ']'
+	pl := newPlan(p)
+	return pl.rangeBytes(1, p.Limit) + 1 // first comma becomes '[', plus ']'
 }

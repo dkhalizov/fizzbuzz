@@ -1,0 +1,25 @@
+TCP (LOGSINK=pipe): RPS +3.3% but not significant (p=0.28).
+
+   │ autolen.tcp.old.txt │ autolen.tcp.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   29.60µ ± 4%   28.66µ ± 5%  ~ (p=0.280 n=10)
+
+   │ autolen.tcp.old.txt │ autolen.tcp.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   67.57k ± 4%   69.79k ± 5%  ~ (p=0.280 n=10)
+
+   │ autolen.tcp.old.txt │ autolen.tcp.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   52.00m ± 4%   54.00m ± 6%  ~ (p=0.207 n=10)
+
+   │ autolen.tcp.old.txt │ autolen.tcp.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   897.0 ± 3%   871.5 ± 6%  ~ (p=0.363 n=10)
+
+   │ autolen.tcp.old.txt │ autolen.tcp.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   4.452k ± 15%   4.166k ± 5%  ~ (p=0.063 n=10)
+
+   │ autolen.tcp.old.txt │ autolen.tcp.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   7.032k ± 223%   6.500k ± 2%  -7.56% (p=0.009 n=10)

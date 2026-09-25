@@ -1,0 +1,23 @@
+   │ rover1.old.txt │ rover1.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   23.213µ ± 5%   8.603µ ± 5%  -62.94% (p=0.000 n=10)
+
+   │ rover1.old.txt │ rover1.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   43.08k ± 5%   116.24k ± 5%  +169.82% (p=0.000 n=10)
+
+   │ rover1.old.txt │ rover1.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   33.00m ± 6%   89.50m ± 5%  +171.21% (p=0.000 n=10)
+
+   │ rover1.old.txt │ rover1.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   2225.0 ± 5%   742.5 ± 5%  -66.63% (p=0.000 n=10)
+
+   │ rover1.old.txt │ rover1.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   5.379k ± 9%   2.001k ± 17%  -62.81% (p=0.000 n=10)
+
+   │ rover1.old.txt │ rover1.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   8.072k ± 20%   4.301k ± 43%  -46.71% (p=0.000 n=10)

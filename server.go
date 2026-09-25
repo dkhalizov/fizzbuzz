@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -33,7 +35,7 @@ func (s *server) handler(reg *prometheus.Registry) http.Handler {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.HandleMethodNotAllowed = true
-	r.Use(observe(s.log, newMetrics(reg)))
+	r.Use(observe(newMetrics(reg)))
 	r.NoRoute(func(c *gin.Context) { c.JSON(http.StatusNotFound, gin.H{"error": "not found"}) })
 	r.NoMethod(func(c *gin.Context) { c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"}) })
 	r.GET("/fizzbuzz", acceptQuery, s.fizzbuzz)
@@ -48,14 +50,15 @@ func (s *server) handler(reg *prometheus.Registry) http.Handler {
 
 func (s *server) fizzbuzz(c *gin.Context) {
 	p, err := parseParams(c.Request.URL.RawQuery)
+	var resp fizzbuzz.Response
 	if err == nil {
-		err = p.Validate(s.cfg.Limits)
+		resp, err = p.Prepare(s.cfg.Limits)
 	}
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	size := fizzbuzz.JSONSize(p)
+	size := resp.Size
 
 	if c.Request.Method == http.MethodHead {
 		setBodyHeaders(c, size)
@@ -74,8 +77,11 @@ func (s *server) fizzbuzz(c *gin.Context) {
 	}
 	setBodyHeaders(c, size)
 	// A write error means that the client left. net/http then closes the connection.
-	dw := &deadlineWriter{w: c.Writer, rc: http.NewResponseController(c.Writer), d: s.cfg.WriteChunkTimeout}
-	_, _ = fizzbuzz.WriteJSON(dw, p)
+	dw := dwPool.Get().(*deadlineWriter)
+	*dw = deadlineWriter{w: c.Writer, dl: findDeadliner(c.Writer), d: s.cfg.WriteChunkTimeout}
+	_, _ = resp.WriteTo(dw)
+	*dw = deadlineWriter{} // drop the references before the pool keeps it
+	dwPool.Put(dw)
 }
 
 func (s *server) flush(ctx context.Context) error {
@@ -133,9 +139,25 @@ func (s *server) logStoreErr(err error) {
 	}
 }
 
+// Shared header values. A direct map assignment skips the key
+// canonicalization and the []string allocation of Header.Set. The capacity is
+// 1, so an Add elsewhere copies the slice and does not change the shared one.
+var (
+	jsonContentType   = []string{"application/json"}[:1:1]
+	acceptQueryHeader = []string{queryMediaType}[:1:1]
+)
+
+// autoLengthBytes is bufferBeforeChunkingSize of net/http. When a handler
+// returns and its whole body is in that buffer, net/http sets Content-Length
+// itself, without an allocation. TestContentLengthOnWire checks the limit.
+const autoLengthBytes = 2048
+
 func setBodyHeaders(c *gin.Context, size int64) {
-	c.Header("Content-Type", "application/json")
-	c.Header("Content-Length", strconv.FormatInt(size, 10))
+	h := c.Writer.Header()
+	h["Content-Type"] = jsonContentType
+	if size > autoLengthBytes || c.Request.Method == http.MethodHead {
+		h["Content-Length"] = []string{strconv.FormatInt(size, 10)}
+	}
 }
 
 type paramsJSON struct {
@@ -167,62 +189,143 @@ func (s *server) statistics(c *gin.Context) {
 }
 
 // parseParams requires each parameter exactly one time and ignores unknown
-// parameters. Params.Validate checks the ranges.
+// parameters. Params.Validate checks the ranges. It accepts and rejects the
+// same queries as url.ParseQuery, but it does not build a url.Values: a
+// value without escapes stays a substring of the query. FuzzParseParams
+// compares it with url.ParseQuery.
 func parseParams(rawQuery string) (fizzbuzz.Params, error) {
 	var p fizzbuzz.Params
-	q, err := url.ParseQuery(rawQuery)
-	if err != nil {
+	vals, counts, ok := scanQuery(rawQuery)
+	if !ok {
 		return p, &fizzbuzz.FieldError{Param: "query", Reason: "malformed percent-encoding"}
 	}
-	get := func(name string) (string, error) {
-		switch vs := q[name]; len(vs) {
+	get := func(i int) (string, error) {
+		switch counts[i] {
 		case 0:
-			return "", &fizzbuzz.FieldError{Param: name, Reason: "is required"}
+			return "", &fizzbuzz.FieldError{Param: paramNames[i], Reason: "is required"}
 		case 1:
-			return vs[0], nil
+			return vals[i], nil
 		default:
-			return "", &fizzbuzz.FieldError{Param: name, Reason: "must be given exactly once"}
+			return "", &fizzbuzz.FieldError{Param: paramNames[i], Reason: "must be given exactly once"}
 		}
 	}
-	getInt := func(name string) (int, error) {
-		v, err := get(name)
+	getInt := func(i int) (int, error) {
+		v, err := get(i)
 		if err != nil {
 			return 0, err
 		}
 		n, err := strconv.ParseInt(v, 10, 64)
 		switch {
 		case errors.Is(err, strconv.ErrRange):
-			return 0, &fizzbuzz.FieldError{Param: name, Reason: "is out of range"}
+			return 0, &fizzbuzz.FieldError{Param: paramNames[i], Reason: "is out of range"}
 		case err != nil:
-			return 0, &fizzbuzz.FieldError{Param: name, Reason: "must be a base-10 integer"}
+			return 0, &fizzbuzz.FieldError{Param: paramNames[i], Reason: "must be a base-10 integer"}
 		}
 		return int(n), nil
 	}
-	if p.Int1, err = getInt("int1"); err != nil {
+	var err error
+	if p.Int1, err = getInt(0); err != nil {
 		return p, err
 	}
-	if p.Int2, err = getInt("int2"); err != nil {
+	if p.Int2, err = getInt(1); err != nil {
 		return p, err
 	}
-	if p.Limit, err = getInt("limit"); err != nil {
+	if p.Limit, err = getInt(2); err != nil {
 		return p, err
 	}
-	if p.Str1, err = get("str1"); err != nil {
+	if p.Str1, err = get(3); err != nil {
 		return p, err
 	}
-	p.Str2, err = get("str2")
+	p.Str2, err = get(4)
 	return p, err
+}
+
+var paramNames = [5]string{"int1", "int2", "limit", "str1", "str2"}
+
+// maxQueryParams is the default limit of url.ParseQuery (GODEBUG
+// urlmaxqueryparams).
+const maxQueryParams = 10000
+
+// scanQuery returns the first value and the count (0, 1 or 2 for "more") of
+// each parameter in paramNames. ok is false where url.ParseQuery returns an
+// error: too many parameters, a key with ';', or a bad escape in any key or
+// value.
+func scanQuery(q string) (vals [5]string, counts [5]uint8, ok bool) {
+	if strings.Count(q, "&") >= maxQueryParams {
+		return vals, counts, false
+	}
+	for q != "" {
+		var seg string
+		seg, q, _ = strings.Cut(q, "&")
+		if strings.IndexByte(seg, ';') >= 0 {
+			return vals, counts, false
+		}
+		if seg == "" {
+			continue
+		}
+		k, v, _ := strings.Cut(seg, "=")
+		k, ok := queryUnescape(k)
+		if !ok {
+			return vals, counts, false
+		}
+		v, ok = queryUnescape(v)
+		if !ok {
+			return vals, counts, false
+		}
+		for i, name := range paramNames {
+			if k == name {
+				if counts[i] == 0 {
+					vals[i] = v
+				}
+				counts[i] = min(counts[i]+1, 2)
+				break
+			}
+		}
+	}
+	return vals, counts, true
+}
+
+// queryUnescape returns s itself when it has nothing to decode.
+func queryUnescape(s string) (string, bool) {
+	if strings.IndexByte(s, '%') < 0 && strings.IndexByte(s, '+') < 0 {
+		return s, true
+	}
+	u, err := url.QueryUnescape(s)
+	return u, err == nil
 }
 
 // deadlineWriter disconnects clients that stop reading. net/http clears the
 // deadline when the response is complete.
 type deadlineWriter struct {
 	w  http.ResponseWriter
-	rc *http.ResponseController
+	dl deadliner // nil when the writer has no deadline, as in httptest
 	d  time.Duration
 }
 
+// A pooled writer, because the generator takes an io.Writer, and a value in
+// an interface moves to the heap.
+var dwPool = sync.Pool{New: func() any { return new(deadlineWriter) }}
+
 func (d *deadlineWriter) Write(b []byte) (int, error) {
-	_ = d.rc.SetWriteDeadline(time.Now().Add(d.d)) // httptest does not support deadlines
+	if d.dl != nil {
+		_ = d.dl.SetWriteDeadline(time.Now().Add(d.d))
+	}
 	return d.w.Write(b)
+}
+
+type deadliner interface{ SetWriteDeadline(time.Time) error }
+
+// findDeadliner does what http.NewResponseController does for
+// SetWriteDeadline, without the allocation of the controller.
+func findDeadliner(w http.ResponseWriter) deadliner {
+	for {
+		switch t := w.(type) {
+		case deadliner:
+			return t
+		case interface{ Unwrap() http.ResponseWriter }:
+			w = t.Unwrap()
+		default:
+			return nil
+		}
+	}
 }

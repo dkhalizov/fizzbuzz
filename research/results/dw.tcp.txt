@@ -1,0 +1,25 @@
+TCP (LOGSINK=pipe): not significant.
+
+   │ dw.tcp.old.txt │ dw.tcp.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   28.34µ ± 3%   28.44µ ± 4%  ~ (p=0.631 n=10)
+
+   │ dw.tcp.old.txt │ dw.tcp.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   70.58k ± 3%   70.31k ± 4%  ~ (p=0.631 n=10)
+
+   │ dw.tcp.old.txt │ dw.tcp.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   54.50m ± 3%   54.00m ± 4%  ~ (p=0.667 n=10)
+
+   │ dw.tcp.old.txt │ dw.tcp.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   858.5 ± 2%   867.0 ± 4%  ~ (p=0.183 n=10)
+
+   │ dw.tcp.old.txt │ dw.tcp.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   4.253k ± 5%   4.138k ± 3%  ~ (p=0.075 n=10)
+
+   │ dw.tcp.old.txt │ dw.tcp.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   6.546k ± 8%   6.426k ± 5%  ~ (p=0.739 n=10)

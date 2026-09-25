@@ -1,0 +1,20 @@
+   │ headers.inproc.old │ headers.inproc.new │
+   │   sec/op   │   sec/op   vs base   │
+Serve/limit=100-4   1.964µ ±  3%   1.808µ ± 6%  -7.97% (p=0.004 n=10)
+Serve/limit=10000-4   50.16µ ± 11%   51.52µ ± 6%   ~ (p=0.631 n=10)
+Serve/limit=1000000-4   5.113m ±  4%   5.164m ± 9%   ~ (p=0.684 n=10)
+geomean   79.56µ   78.35µ   -1.53%
+
+   │ headers.inproc.old │ headers.inproc.new │
+   │   B/op   │   B/op   vs base   │
+Serve/limit=100-4   374.5 ± 0%   340.5 ±  1%  -9.08% (p=0.000 n=10)
+Serve/limit=10000-4   359.0 ± 1%   327.0 ±  1%  -8.91% (p=0.000 n=10)
+Serve/limit=1000000-4   575.5 ± 2%   533.0 ± 37%  -7.38% (p=0.000 n=10)
+geomean   426.1   390.1   -8.46%
+
+   │ headers.inproc.old │ headers.inproc.new │
+   │   allocs/op   │   allocs/op   vs base   │
+Serve/limit=100-4   9.000 ± 0%   7.000 ± 0%  -22.22% (p=0.000 n=10)
+Serve/limit=10000-4   9.000 ± 0%   7.000 ± 0%  -22.22% (p=0.000 n=10)
+Serve/limit=1000000-4   9.000 ± 0%   7.000 ± 0%  -22.22% (p=0.000 n=10)
+geomean   9.000   7.000   -22.22%

@@ -1,0 +1,21 @@
+   │ autolen.inproc.old │ autolen.inproc.new │
+   │   sec/op   │   sec/op   vs base   │
+Serve/limit=100-4   1.844µ ± 3%   1.730µ ± 4%  -6.18% (p=0.000 n=10)
+Serve/limit=10000-4   54.42µ ± 8%   52.68µ ± 8%   ~ (p=0.631 n=10)
+Serve/limit=1000000-4   5.079m ± 6%   5.154m ± 6%   ~ (p=0.912 n=10)
+geomean   79.88µ   77.74µ   -2.68%
+
+   │ autolen.inproc.old │ autolen.inproc.new │
+   │   B/op   │   B/op   vs base   │
+Serve/limit=100-4   341.0 ±  0%   320.0 ±  1%   -6.16% (p=0.000 n=10)
+Serve/limit=10000-4   327.5 ±  1%   327.0 ±  1%   ~ (p=0.317 n=10)
+Serve/limit=1000000-4   546.5 ± 39%   424.5 ± 30%   ~ (p=0.236 n=10)
+geomean   393.7   354.2   -10.05%
+
+   │ autolen.inproc.old │ autolen.inproc.new │
+   │   allocs/op   │   allocs/op   vs base   │
+Serve/limit=100-4   7.000 ± 0%   5.000 ± 0%  -28.57% (p=0.000 n=10)
+Serve/limit=10000-4   7.000 ± 0%   7.000 ± 0%   ~ (p=1.000 n=10) ¹
+Serve/limit=1000000-4   7.000 ± 0%   7.000 ± 0%   ~ (p=1.000 n=10) ¹
+geomean   7.000   6.257   -10.61%
+¹ all samples are equal

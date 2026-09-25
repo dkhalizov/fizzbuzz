@@ -16,7 +16,7 @@ import (
 const queryMediaType = "application/x-www-form-urlencoded"
 
 // acceptQuery advertises QUERY support on every /fizzbuzz response (RFC 10008 §3).
-func acceptQuery(c *gin.Context) { c.Header("Accept-Query", queryMediaType) }
+func acceptQuery(c *gin.Context) { c.Writer.Header()["Accept-Query"] = acceptQueryHeader }
 
 func (s *server) query(c *gin.Context) {
 	// RFC 10008 §2: reject a missing or unsupported Content-Type.

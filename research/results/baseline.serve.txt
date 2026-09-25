@@ -1,0 +1,24 @@
+goos: linux
+goarch: amd64
+pkg: fizzbuzz
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+   │ base_serve.txt │
+   │   sec/op   │
+Serve/limit=100-4   4.049µ ± 5%
+Serve/limit=10000-4   55.71µ ± 6%
+Serve/limit=1000000-4   5.311m ± 7%
+geomean   106.2µ
+
+   │ base_serve.txt │
+   │   B/op   │
+Serve/limit=100-4   813.0 ± 0%
+Serve/limit=10000-4   918.0 ± 0%
+Serve/limit=1000000-4   14.82Ki ± 1%
+geomean   2.193Ki
+
+   │ base_serve.txt │
+   │   allocs/op   │
+Serve/limit=100-4   23.00 ± 0%
+Serve/limit=10000-4   27.00 ± 0%
+Serve/limit=1000000-4   527.0 ± 0%
+geomean   68.91

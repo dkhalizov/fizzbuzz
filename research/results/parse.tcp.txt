@@ -1,0 +1,25 @@
+TCP: LOGSINK=pipe.
+
+   │ parse.tcp.old.txt │ parse.tcp.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   30.63µ ± 2%   29.87µ ± 2%  -2.48% (p=0.009 n=10)
+
+   │ parse.tcp.old.txt │ parse.tcp.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   65.31k ± 2%   66.96k ± 2%  +2.53% (p=0.009 n=10)
+
+   │ parse.tcp.old.txt │ parse.tcp.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   50.50m ± 1%   52.00m ± 2%  +2.97% (p=0.012 n=10)
+
+   │ parse.tcp.old.txt │ parse.tcp.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   924.0 ± 3%   910.0 ± 3%  ~ (p=0.052 n=10)
+
+   │ parse.tcp.old.txt │ parse.tcp.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   4.427k ± 5%   4.366k ± 5%  ~ (p=0.110 n=10)
+
+   │ parse.tcp.old.txt │ parse.tcp.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   6.988k ± 11%   6.510k ± 7%  ~ (p=0.247 n=10)

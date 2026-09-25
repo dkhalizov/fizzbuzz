@@ -1,0 +1,23 @@
+   │ log.tcp.old.txt │ log.tcp.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=100   35.64µ ± 2%   32.16µ ± 3%  -9.76% (p=0.000 n=10)
+
+   │ log.tcp.old.txt │ log.tcp.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   56.12k ± 2%   62.19k ± 3%  +10.81% (p=0.000 n=10)
+
+   │ log.tcp.old.txt │ log.tcp.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=100   43.50m ± 3%   48.00m ± 2%  +10.34% (p=0.000 n=10)
+
+   │ log.tcp.old.txt │ log.tcp.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=100   1075.0 ± 3%   967.5 ± 3%  -10.00% (p=0.000 n=10)
+
+   │ log.tcp.old.txt │ log.tcp.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   4.936k ± 7%   4.598k ± 6%  -6.84% (p=0.002 n=10)
+
+   │ log.tcp.old.txt │ log.tcp.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=100   7.458k ± 21%   7.272k ± 9%  ~ (p=0.529 n=10)

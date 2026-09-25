@@ -1,0 +1,8 @@
+With stdout to /dev/null (a write syscall costs less there):
+   │ asynclog.devnull.old.txt │ asynclog.devnull.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=100   61.41k ± 3%   64.50k ± 2%  +5.04% (p=0.000 n=10)
+
+   │ asynclog.devnull.old.txt │ asynclog.devnull.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=100   4.559k ± 10%   4.443k ± 4%  ~ (p=0.271 n=10)

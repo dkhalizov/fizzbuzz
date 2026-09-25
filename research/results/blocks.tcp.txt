@@ -1,0 +1,25 @@
+TCP at limit=10,000,000, 4 connections, LOGSINK=pipe. Units: sec/op here is server core time per response.
+
+   │ blocks.tcp.old.txt │ blocks.tcp.new.txt │
+   │   sec/op   │   sec/op   vs base   │
+TCP/limit=10000000   114.38m ± 3%   33.34m ± 5%  -70.85% (p=0.000 n=10)
+
+   │ blocks.tcp.old.txt │ blocks.tcp.new.txt │
+   │   req/s   │   req/s   vs base   │
+TCP/limit=10000000   17.50 ± 3%   60.00 ± 5%  +242.86% (p=0.000 n=10)
+
+   │ blocks.tcp.old.txt │ blocks.tcp.new.txt │
+   │   GB/s   │   GB/s   vs base   │
+TCP/limit=10000000   1.572 ± 3%   5.336 ± 4%  +239.44% (p=0.000 n=10)
+
+   │ blocks.tcp.old.txt │ blocks.tcp.new.txt │
+   │   p50-us   │   p50-us   vs base   │
+TCP/limit=10000000   222.57k ± 3%   63.94k ± 4%  -71.27% (p=0.000 n=10)
+
+   │ blocks.tcp.old.txt │ blocks.tcp.new.txt │
+   │   p99-us   │   p99-us   vs base   │
+TCP/limit=10000000   311.0k ± 8%   116.9k ± 6%  -62.40% (p=0.000 n=10)
+
+   │ blocks.tcp.old.txt │ blocks.tcp.new.txt │
+   │   p999-us   │   p999-us   vs base   │
+TCP/limit=10000000   311.0k ± 8%   133.0k ± 14%  -57.22% (p=0.000 n=10)
