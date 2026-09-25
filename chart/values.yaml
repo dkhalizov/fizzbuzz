@@ -1,0 +1,26 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/dkhalizov/fizzbuzz
+  tag: latest
+  # Takes precedence over tag when set; pin it in production.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+# Environment variables, see the README configuration table.
+env:
+  STATS_STORE: memory
+
+service:
+  port: 80
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

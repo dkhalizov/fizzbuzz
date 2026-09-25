@@ -1,0 +1,6 @@
+.git
+.idea
+docs
+*.md
+!README.md
+emai.txt

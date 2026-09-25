@@ -1,0 +1,7 @@
+.idea/
+docs/
+emai.txt
+/fizzbuzz
+*.test
+*.pprof
+bench.txt
