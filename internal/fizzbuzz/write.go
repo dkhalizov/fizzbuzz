@@ -128,26 +128,68 @@ func writePlan(w io.Writer, pl *plan) (int64, error) {
 	if need := streamBuf + pl.maxElem() + 1; len(buf) < need { // unvalidated long strings
 		buf = make([]byte, need)
 	}
-	var written int64
+	st := stream{w: w, buf: buf}
+	bl, useBlocks := newBlocks(pl)
+	if useBlocks {
+		bl.blockBufs = blockPool.Get().(*blockBufs)
+		bl.elems = append(bl.elems[:0], pl.elems()...)
+		defer blockPool.Put(bl.blockBufs)
+	}
 	g := newGen(pl, 1)
-	first := true
 	for g.i <= pl.n {
-		pos := g.fill(buf, 0, streamBuf, pl.n)
-		if first {
-			buf[0] = '['
-			first = false
+		hi := pl.n
+		if useBlocks {
+			if s := g.i - 1; s > 0 && s%bl.L == 0 && s+bl.L <= pl.n {
+				if b := bl.render(s); b != nil {
+					if err := st.flush(); err != nil {
+						return st.written, err
+					}
+					if err := st.write(b); err != nil {
+						return st.written, err
+					}
+					g = newGen(pl, s+bl.L+1)
+					continue
+				}
+			}
+			hi = min(pl.n, ((g.i-1)/bl.L+1)*bl.L) // up to the next block start
 		}
-		if g.i > pl.n {
-			buf[pos] = ']'
-			pos++
-		}
-		m, err := w.Write(buf[:pos])
-		written += int64(m)
-		if err != nil {
-			return written, err
+		st.pos = g.fill(st.buf, st.pos, streamBuf, hi)
+		if st.pos > streamBuf {
+			if err := st.flush(); err != nil {
+				return st.written, err
+			}
 		}
 	}
-	return written, nil
+	st.buf[st.pos] = ']'
+	st.pos++
+	return st.written, st.flush()
+}
+
+// stream sends buffered elements. The first byte of the output is the comma
+// of the first element, which becomes '['.
+type stream struct {
+	w       io.Writer
+	buf     []byte
+	pos     int
+	written int64
+}
+
+func (st *stream) flush() error {
+	if st.pos == 0 {
+		return nil
+	}
+	err := st.write(st.buf[:st.pos])
+	st.pos = 0
+	return err
+}
+
+func (st *stream) write(b []byte) error {
+	if st.written == 0 {
+		b[0] = '['
+	}
+	m, err := st.w.Write(b)
+	st.written += int64(m)
+	return err
 }
 
 // writePeriodic handles int1 == 1 or int2 == 1. Then the bytes repeat every
