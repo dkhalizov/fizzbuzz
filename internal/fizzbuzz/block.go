@@ -69,6 +69,10 @@ func newBlocks(pl *plan) (blocks, bool) {
 		if bytes > maxBlockBytes {
 			continue
 		}
+		// m copies of the period in one block: one write of about 1 MiB is
+		// faster over loopback TCP than writes of 64 to 256 KiB.
+		m := max(1, min(maxBlockBytes/bytes, pl.n/16/L))
+		L, plain, bytes = L*m, plain*m, bytes*m
 		return blocks{a: pl.a, b: pl.b, l: pl.l, i1: pl.i1, i2: pl.i2, end: pl.end, k: k, K: K, L: L, plain: plain, bytes: bytes}, true
 	}
 	return blocks{}, false
