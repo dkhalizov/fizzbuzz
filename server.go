@@ -50,14 +50,15 @@ func (s *server) handler(reg *prometheus.Registry) http.Handler {
 
 func (s *server) fizzbuzz(c *gin.Context) {
 	p, err := parseParams(c.Request.URL.RawQuery)
+	var resp fizzbuzz.Response
 	if err == nil {
-		err = p.Validate(s.cfg.Limits)
+		resp, err = p.Prepare(s.cfg.Limits)
 	}
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	size := fizzbuzz.JSONSize(p)
+	size := resp.Size
 
 	if c.Request.Method == http.MethodHead {
 		setBodyHeaders(c, size)
@@ -77,7 +78,7 @@ func (s *server) fizzbuzz(c *gin.Context) {
 	setBodyHeaders(c, size)
 	// A write error means that the client left. net/http then closes the connection.
 	dw := &deadlineWriter{w: c.Writer, rc: http.NewResponseController(c.Writer), d: s.cfg.WriteChunkTimeout}
-	_, _ = fizzbuzz.WriteJSON(dw, p)
+	_, _ = resp.WriteTo(dw)
 }
 
 func (s *server) flush(ctx context.Context) error {

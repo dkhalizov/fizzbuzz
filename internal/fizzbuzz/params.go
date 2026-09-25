@@ -2,6 +2,7 @@ package fizzbuzz
 
 import (
 	"fmt"
+	"io"
 	"math"
 	"sort"
 	"unicode/utf8"
@@ -35,6 +36,41 @@ func (e *FieldError) Error() string { return e.Param + ": " + e.Reason }
 // Validate returns the first violation in the order int1, int2, limit, str1,
 // str2, then the response size.
 func (p Params) Validate(lim Limits) error {
+	_, err := p.Prepare(lim)
+	return err
+}
+
+// Response is a validated request. It keeps the plan and the exact size, so
+// a request builds them one time.
+type Response struct {
+	pl   *plan
+	Size int64 // exact bytes, for Content-Length
+}
+
+// Prepare validates p like Validate and returns the response to stream.
+func (p Params) Prepare(lim Limits) (Response, error) {
+	if err := p.validateFields(lim); err != nil {
+		return Response{}, err
+	}
+	pl := newPlan(p)
+	size := pl.rangeBytes(1, pl.n) + 1
+	if size > lim.MaxResponseBytes {
+		// The size rounds up and the maximum rounds down, so they never print equal.
+		reason := fmt.Sprintf("the response would be %d MiB, but the maximum is %d MiB.",
+			(size+1<<20-1)>>20, lim.MaxResponseBytes>>20)
+		if n := largestLimit(p, lim.MaxResponseBytes); n > 0 {
+			reason += fmt.Sprintf(" With these strings, use a limit of %d or less.", n)
+		}
+		return Response{}, &FieldError{"limit", reason}
+	}
+	return Response{pl: pl, Size: size}, nil
+}
+
+// WriteTo streams the array and returns the bytes written, exactly r.Size.
+// It stops at the first write error.
+func (r Response) WriteTo(w io.Writer) (int64, error) { return writePlan(w, r.pl) }
+
+func (p Params) validateFields(lim Limits) error {
 	switch {
 	case p.Int1 < 1:
 		return &FieldError{"int1", "must be at least 1"}
@@ -46,19 +82,7 @@ func (p Params) Validate(lim Limits) error {
 	if err := validateStr("str1", p.Str1, lim.MaxStrBytes); err != nil {
 		return err
 	}
-	if err := validateStr("str2", p.Str2, lim.MaxStrBytes); err != nil {
-		return err
-	}
-	if size := JSONSize(p); size > lim.MaxResponseBytes {
-		// The size rounds up and the maximum rounds down, so they never print equal.
-		reason := fmt.Sprintf("the response would be %d MiB, but the maximum is %d MiB.",
-			(size+1<<20-1)>>20, lim.MaxResponseBytes>>20)
-		if n := largestLimit(p, lim.MaxResponseBytes); n > 0 {
-			reason += fmt.Sprintf(" With these strings, use a limit of %d or less.", n)
-		}
-		return &FieldError{"limit", reason}
-	}
-	return nil
+	return validateStr("str2", p.Str2, lim.MaxStrBytes)
 }
 
 // largestLimit returns the largest limit below p.Limit whose response fits, or

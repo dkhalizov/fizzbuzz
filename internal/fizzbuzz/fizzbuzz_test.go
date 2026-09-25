@@ -43,6 +43,16 @@ func check(t *testing.T, p Params) {
 	if err != nil || n != int64(len(want)) || !bytes.Equal(b.Bytes(), want) {
 		t.Fatalf("WriteJSON mismatch for %+v (n=%d, err=%v):\n got %.200s\nwant %.200s", p, n, err, b.Bytes(), want)
 	}
+	// The same through Prepare, with no size limit.
+	lim := Limits{MaxLimit: math.MaxInt, MaxStrBytes: math.MaxInt, MaxResponseBytes: math.MaxInt64}
+	r, err := p.Prepare(lim)
+	if err != nil || r.Size != int64(len(want)) {
+		t.Fatalf("Prepare(%+v) = size %d, %v; want %d", p, r.Size, err, len(want))
+	}
+	b.Reset()
+	if n, err := r.WriteTo(&b); err != nil || n != r.Size || !bytes.Equal(b.Bytes(), want) {
+		t.Fatalf("Response.WriteTo mismatch for %+v (n=%d, err=%v)", p, n, err)
+	}
 }
 
 func TestExample(t *testing.T) {

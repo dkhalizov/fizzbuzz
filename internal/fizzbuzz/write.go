@@ -109,8 +109,9 @@ var bufPool = sync.Pool{New: func() any {
 
 // WriteJSON streams the array for validated p and returns the bytes written,
 // exactly JSONSize(p). It stops at the first write error.
-func WriteJSON(w io.Writer, p Params) (int64, error) {
-	pl := newPlan(p)
+func WriteJSON(w io.Writer, p Params) (int64, error) { return writePlan(w, newPlan(p)) }
+
+func writePlan(w io.Writer, pl *plan) (int64, error) {
 	// The periodic path buffers a full period. Thus it runs only when a period
 	// fits the stream buffer.
 	if min(pl.a, pl.b) == 1 && pl.rangeBytes(1, min(max(pl.a, pl.b), pl.n)) <= streamBuf {
