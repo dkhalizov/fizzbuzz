@@ -45,15 +45,18 @@ func (c *dcounter) inc() {
 	c.d[k]++
 }
 
+// gen is a value, so it and its plan can stay on the stack of the caller.
 type gen struct {
-	pl           *plan
+	a, b         int
+	e1, e2, e12  []byte
 	i            int // next element
 	next1, next2 int // next multiples of a and b, >= i
 	c            dcounter
 }
 
-func newGen(pl *plan, lo int) *gen {
-	g := &gen{pl: pl, i: lo}
+func newGen(pl *plan, lo int) gen {
+	e := pl.elems()
+	g := gen{a: pl.a, b: pl.b, e1: e[:pl.i1:pl.i1], e2: e[pl.i1:pl.i2:pl.i2], e12: e[pl.i2:pl.end], i: lo}
 	g.next1 = ((lo-1)/pl.a + 1) * pl.a
 	g.next2 = ((lo-1)/pl.b + 1) * pl.b
 	g.c.set(lo)
@@ -61,7 +64,7 @@ func newGen(pl *plan, lo int) *gen {
 }
 
 func (pl *plan) maxElem() int {
-	return max(maxNumElem, len(pl.e1), len(pl.e2), len(pl.e12))
+	return max(maxNumElem, pl.len1(), pl.len2(), pl.len12())
 }
 
 // fill emits elements g.i..hi from pos while pos <= stop. buf needs
@@ -83,19 +86,18 @@ func (g *gen) fill(buf []byte, pos, stop, hi int) int {
 }
 
 func (g *gen) event() []byte {
-	pl := g.pl
 	var e []byte
 	if g.i == g.next1 {
-		g.next1 += pl.a
+		g.next1 += g.a
 		if g.i == g.next2 {
-			g.next2 += pl.b
-			e = pl.e12
+			g.next2 += g.b
+			e = g.e12
 		} else {
-			e = pl.e1
+			e = g.e1
 		}
 	} else {
-		g.next2 += pl.b
-		e = pl.e2
+		g.next2 += g.b
+		e = g.e2
 	}
 	g.c.inc()
 	g.i++
@@ -109,7 +111,10 @@ var bufPool = sync.Pool{New: func() any {
 
 // WriteJSON streams the array for validated p and returns the bytes written,
 // exactly JSONSize(p). It stops at the first write error.
-func WriteJSON(w io.Writer, p Params) (int64, error) { return writePlan(w, newPlan(p)) }
+func WriteJSON(w io.Writer, p Params) (int64, error) {
+	pl := newPlan(p)
+	return writePlan(w, &pl)
+}
 
 func writePlan(w io.Writer, pl *plan) (int64, error) {
 	// The periodic path buffers a full period. Thus it runs only when a period

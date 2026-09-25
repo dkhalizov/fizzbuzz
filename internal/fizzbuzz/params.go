@@ -43,7 +43,7 @@ func (p Params) Validate(lim Limits) error {
 // Response is a validated request. It keeps the plan and the exact size, so
 // a request builds them one time.
 type Response struct {
-	pl   *plan
+	pl   plan
 	Size int64 // exact bytes, for Content-Length
 }
 
@@ -68,7 +68,7 @@ func (p Params) Prepare(lim Limits) (Response, error) {
 
 // WriteTo streams the array and returns the bytes written, exactly r.Size.
 // It stops at the first write error.
-func (r Response) WriteTo(w io.Writer) (int64, error) { return writePlan(w, r.pl) }
+func (r *Response) WriteTo(w io.Writer) (int64, error) { return writePlan(w, &r.pl) }
 
 func (p Params) validateFields(lim Limits) error {
 	switch {
