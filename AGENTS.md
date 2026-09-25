@@ -11,7 +11,7 @@ This file has the rules for AI coding agents in this repository. It also records
 | `query.go` | The QUERY method |
 | `web.go`, `web/` | The embedded page |
 | `config.go` | All settings from environment variables, with their defaults |
-| `stats.go` | The `statsStore` interface and the memory store |
+| `stats.go` | The `statsStore` interface and the memory store, which keeps each prefix of a request one time |
 | `redis_store.go` | The Redis store, for replicas. Each replica counts in memory and sends batches. One atomic Lua script applies each batch. |
 | `observe.go` | Request log and Prometheus metrics |
 | `main.go` | Wiring, server timeouts and shutdown |
@@ -52,6 +52,7 @@ The take-home permits AI, and this file records all of it.
 - Design: Claude Code (Claude Opus 5.5) wrote the first scope, the assumptions and the analysis of edge cases. OpenAI Codex (`gpt-5.6-sol`, read-only) did adversarial reviews of the design in several rounds. A new Claude Opus instance did a last independent check. Each disagreement had an explicit decision. For example, a statistics cap gave wrong answers without a signal, so an explicit 503 replaced it. Also, integer parsing depended on the platform, and a fix made it the same on all platforms.
 - Performance: a separate investigation compared three generator designs with benchmarks and a research note. The service uses the fastest streamed design.
 - Implementation: Claude Code wrote the code and tests. A second Claude Code session added the QUERY method and the page. A test or a measurement checked each claim about behavior, and some claims failed. For example, an agent suspected a bug with write deadlines on keep-alive connections. `net/http` already handles that case, so Claude Code removed the fix and its test.
-- Statistics: Claude Code measured the cost of the statistics. A timer for each request and one Redis call for each request were the main costs. Claude Code removed the timer and changed the Redis store to send batches. Benchmarks against a real Redis supported the change. Tests show that a retry does not count a batch again.
+- Statistics: Claude Code measured the cost of the statistics. A timer for each request and one Redis call for each request were the main costs. Claude Code removed the timer and changed the Redis store to send batches. Benchmarks against a real Redis supported the change. Tests show that a retry does not count a batch again. Then Claude Code measured the memory for each key. It found that each stored string kept the whole query string in memory, so real memory was more than the budget. The memory store now keeps each set of `int1`, `int2`, `str1` and `str2` one time and copies its strings. A test compares the real heap with the budget.
 - Text: agents edited all text to plain technical English (ASD-STE100) and removed the patterns that Wikipedia lists as signs of AI writing.
+- Scope: Claude Code listed the decisions that depend on the meaning of "production ready" and drafted the README sections about them. It checked each statement about the current behavior against the code, the tests or a running server.
 - Human decisions: the focus on performance, gin, the limits, and what to leave out.

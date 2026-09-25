@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -87,6 +88,10 @@ func loadConfig(getenv func(string) string) (config, error) {
 		errs = append(errs, errors.New("MAX_INFLIGHT_BYTES must be >= MAX_RESPONSE_BYTES, or the largest response could never run"))
 	case c.StatsStore != "memory" && c.StatsStore != "redis":
 		errs = append(errs, fmt.Errorf("STATS_STORE=%q: must be memory or redis", c.StatsStore))
+	case c.Limits.MaxLimit > math.MaxUint32:
+		errs = append(errs, errors.New("MAX_LIMIT must be less than 2^32, because the memory store keeps limit in 32 bits"))
+	case c.StatsMaxBytes/prefixCost > math.MaxUint32:
+		errs = append(errs, errors.New("STATS_MAX_BYTES is too large for the 32-bit prefix IDs of the memory store"))
 	case c.StatsFlushInterval <= 0:
 		errs = append(errs, errors.New("STATS_FLUSH_INTERVAL must be positive"))
 	case c.StatsStore == "redis" && c.RedisAddr == "":

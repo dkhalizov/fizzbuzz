@@ -51,10 +51,10 @@ func (p Params) Validate(lim Limits) error {
 	}
 	if size := JSONSize(p); size > lim.MaxResponseBytes {
 		// The size rounds up and the maximum rounds down, so they never print equal.
-		reason := fmt.Sprintf("the response would be %d MiB, but the maximum is %d MiB.",
+		reason := fmt.Sprintf("the response would be %d MiB, but the maximum is %d MiB",
 			(size+1<<20-1)>>20, lim.MaxResponseBytes>>20)
 		if n := largestLimit(p, lim.MaxResponseBytes); n > 0 {
-			reason += fmt.Sprintf(" With these strings, use a limit of %d or less.", n)
+			reason += fmt.Sprintf("; with these strings, use a limit of %d or less", n)
 		}
 		return &FieldError{"limit", reason}
 	}
