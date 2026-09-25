@@ -69,26 +69,60 @@ func (s *server) fizzbuzz(c *gin.Context) {
 	}
 	defer s.inflight.Add(-size)
 
-	s.record(c.Request.Context(), p)
+	if s.store.Record(p) {
+		s.warnSaturated()
+	}
 	setBodyHeaders(c, size)
 	// A write error means that the client left. net/http then closes the connection.
 	dw := &deadlineWriter{w: c.Writer, rc: http.NewResponseController(c.Writer), d: s.cfg.WriteChunkTimeout}
 	_, _ = fizzbuzz.WriteJSON(dw, p)
 }
 
-// record does not fail the request. A store outage stops the statistics, not /fizzbuzz.
-// ponytail: one synchronous Redis round trip for each request. If it shows in
-// the latency, count locally and send the counts in batches.
-func (s *server) record(ctx context.Context, p fizzbuzz.Params) {
+func (s *server) flush(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, s.cfg.RedisTimeout)
 	defer cancel()
-	saturatedNow, err := s.store.Record(ctx, p)
+	saturatedNow, err := s.store.Flush(ctx)
 	if saturatedNow {
-		s.log.Warn("statistics saturated; /stats returns 503", "max_bytes", s.cfg.StatsMaxBytes)
+		s.warnSaturated()
 	}
 	if err != nil {
 		s.logStoreErr(err)
 	}
+	return err
+}
+
+// flushLoop flushes one last time when ctx ends, so a normal shutdown loses no
+// hits.
+func (s *server) flushLoop(ctx context.Context) {
+	t := time.NewTicker(s.cfg.StatsFlushInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-t.C:
+			_ = s.flush(ctx)
+		case <-ctx.Done():
+			_ = s.flush(context.WithoutCancel(ctx))
+			return
+		}
+	}
+}
+
+// top flushes first, so a client sees its own hits on this replica.
+func (s *server) top(ctx context.Context) (fizzbuzz.Params, uint64, error) {
+	if err := s.flush(ctx); err != nil {
+		return fizzbuzz.Params{}, 0, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, s.cfg.RedisTimeout)
+	defer cancel()
+	p, hits, err := s.store.Top(ctx)
+	if err != nil && !errors.Is(err, errStatsUnavailable) {
+		s.logStoreErr(err)
+	}
+	return p, hits, err
+}
+
+func (s *server) warnSaturated() {
+	s.log.Warn("statistics saturated; /stats returns 503", "max_bytes", s.cfg.StatsMaxBytes)
 }
 
 // logStoreErr logs one time in 10 s or less often, so an outage does not flood the log.
@@ -113,12 +147,9 @@ type paramsJSON struct {
 }
 
 func (s *server) statistics(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), s.cfg.RedisTimeout)
-	defer cancel()
-	p, hits, err := s.store.Top(ctx)
+	p, hits, err := s.top(c.Request.Context())
 	if err != nil {
 		if !errors.Is(err, errStatsUnavailable) {
-			s.logStoreErr(err)
 			err = errors.New("statistics unavailable: store error")
 		}
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})

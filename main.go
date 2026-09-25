@@ -30,9 +30,18 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	store := newStore(cfg, logger)
+	app := newServer(cfg, logger, store)
+	flushCtx, stopFlush := context.WithCancel(context.Background())
+	defer stopFlush()
+	flushDone := make(chan struct{})
+	if _, ok := store.(*redisStore); ok {
+		go func() { app.flushLoop(flushCtx); close(flushDone) }()
+	} else {
+		close(flushDone)
+	}
 
 	srv := &http.Server{
-		Handler:           newServer(cfg, logger, store).handler(prometheus.NewRegistry()),
+		Handler:           app.handler(prometheus.NewRegistry()),
 		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
 		ReadTimeout:       cfg.ReadTimeout,
 		IdleTimeout:       cfg.IdleTimeout,
@@ -60,7 +69,10 @@ func run(logger *slog.Logger) error {
 	logger.Info("shutting down", "timeout", cfg.ShutdownTimeout.String())
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
-	if err := srv.Shutdown(shutdownCtx); err != nil {
+	err = srv.Shutdown(shutdownCtx)
+	stopFlush() // after the last request is served
+	<-flushDone
+	if err != nil {
 		return fmt.Errorf("shutdown: %w", err)
 	}
 	if err := <-serveErr; !errors.Is(err, http.ErrServerClosed) {
@@ -82,5 +94,5 @@ func newStore(cfg config, logger *slog.Logger) statsStore {
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		logger.Warn("redis unreachable at startup", "addr", cfg.RedisAddr, "err", err)
 	}
-	return &redisStore{rdb: rdb, maxBytes: cfg.StatsMaxBytes}
+	return newRedisStore(rdb, cfg.StatsMaxBytes)
 }
