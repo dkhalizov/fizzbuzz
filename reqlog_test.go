@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"log/slog"
+	"sync"
 	"testing"
 	"time"
 )
@@ -57,4 +58,32 @@ func FuzzRequestLog(f *testing.F) {
 			t.Fatalf("got  %q\nwant %q", got, want)
 		}
 	})
+}
+
+func TestRequestLogFlushesAtShutdown(t *testing.T) {
+	var out lockedBuffer
+	l := newRequestLog(&out)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { l.run(ctx); close(done) }()
+	const n = 5000 // more than logFlushBytes, so the kick path runs too
+	for range n {
+		l.log(time.Unix(0, 0).UTC(), "GET", "/fizzbuzz", 200, time.Millisecond)
+	}
+	cancel()
+	<-done
+	if got := bytes.Count(out.Bytes(), []byte("\n")); got != n {
+		t.Fatalf("%d lines, want %d", got, n)
+	}
+}
+
+type lockedBuffer struct {
+	mu sync.Mutex
+	bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.Buffer.Write(p)
 }

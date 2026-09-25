@@ -28,7 +28,7 @@ type server struct {
 }
 
 func newServer(cfg config, log *slog.Logger, store statsStore) *server {
-	return &server{cfg: cfg, log: log, store: store, reqLog: &requestLog{w: io.Discard}}
+	return &server{cfg: cfg, log: log, store: store, reqLog: newRequestLog(io.Discard)}
 }
 
 func (s *server) handler(reg *prometheus.Registry) http.Handler {

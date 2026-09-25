@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"strconv"
 	"sync"
@@ -10,23 +11,77 @@ import (
 
 // requestLog writes the request line of slog.JSONHandler by hand. slog
 // formats the float with encoding/json and walks its attributes through
-// interfaces. This writer appends the same bytes to a pooled buffer.
-// TestRequestLogMatchesSlog and FuzzRequestLog compare it with slog.
+// interfaces. TestRequestLogMatchesSlog and FuzzRequestLog compare it with slog.
+//
+// The lines collect in one buffer. run sends the buffer every logFlushInterval,
+// or at once when it has logFlushBytes. Thus a request does not make a write
+// syscall. The cost: a crash loses the lines of the last interval, and a line
+// can appear up to logFlushInterval after its request.
 type requestLog struct {
-	mu sync.Mutex // one Write for each line, in order
-	w  io.Writer
+	mu    sync.Mutex // guards buf
+	buf   []byte
+	spare []byte
+	wmu   sync.Mutex // one Write at a time, in order
+	w     io.Writer
+	kick  chan struct{}
 }
 
-var logBufPool = sync.Pool{New: func() any { b := make([]byte, 0, 256); return &b }}
+const (
+	logFlushInterval = 100 * time.Millisecond
+	logFlushBytes    = 64 << 10
+	logMaxBytes      = 1 << 20 // then the request writes: backpressure from a slow reader
+)
+
+func newRequestLog(w io.Writer) *requestLog {
+	return &requestLog{w: w, buf: make([]byte, 0, 2*logFlushBytes), spare: make([]byte, 0, 2*logFlushBytes), kick: make(chan struct{}, 1)}
+}
 
 func (l *requestLog) log(t time.Time, method, path string, status int, elapsed time.Duration) {
-	bp := logBufPool.Get().(*[]byte)
-	b := appendRequestLine((*bp)[:0], t, method, path, status, elapsed)
 	l.mu.Lock()
-	_, _ = l.w.Write(b)
+	l.buf = appendRequestLine(l.buf, t, method, path, status, elapsed)
+	n := len(l.buf)
 	l.mu.Unlock()
-	*bp = b
-	logBufPool.Put(bp)
+	if n >= logMaxBytes {
+		l.flush()
+	} else if n >= logFlushBytes {
+		select {
+		case l.kick <- struct{}{}:
+		default:
+		}
+	}
+}
+
+// flush swaps the buffers under mu and writes outside it, so requests do not
+// wait for the write.
+func (l *requestLog) flush() {
+	l.wmu.Lock()
+	defer l.wmu.Unlock()
+	l.mu.Lock()
+	b := l.buf
+	l.buf, l.spare = l.spare[:0], nil
+	l.mu.Unlock()
+	if len(b) > 0 {
+		_, _ = l.w.Write(b)
+	}
+	l.mu.Lock()
+	l.spare = b[:0]
+	l.mu.Unlock()
+}
+
+// run flushes until ctx ends, then one last time.
+func (l *requestLog) run(ctx context.Context) {
+	t := time.NewTicker(logFlushInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-t.C:
+		case <-l.kick:
+		case <-ctx.Done():
+			l.flush()
+			return
+		}
+		l.flush()
+	}
 }
 
 func appendRequestLine(b []byte, t time.Time, method, path string, status int, elapsed time.Duration) []byte {
