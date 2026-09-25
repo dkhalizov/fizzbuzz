@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -78,8 +79,11 @@ func (s *server) fizzbuzz(c *gin.Context) {
 	}
 	setBodyHeaders(c, size)
 	// A write error means that the client left. net/http then closes the connection.
-	dw := &deadlineWriter{w: c.Writer, rc: http.NewResponseController(c.Writer), d: s.cfg.WriteChunkTimeout}
+	dw := dwPool.Get().(*deadlineWriter)
+	*dw = deadlineWriter{w: c.Writer, dl: findDeadliner(c.Writer), d: s.cfg.WriteChunkTimeout}
 	_, _ = resp.WriteTo(dw)
+	*dw = deadlineWriter{} // drop the references before the pool keeps it
+	dwPool.Put(dw)
 }
 
 func (s *server) flush(ctx context.Context) error {
@@ -296,11 +300,34 @@ func queryUnescape(s string) (string, bool) {
 // deadline when the response is complete.
 type deadlineWriter struct {
 	w  http.ResponseWriter
-	rc *http.ResponseController
+	dl deadliner // nil when the writer has no deadline, as in httptest
 	d  time.Duration
 }
 
+// A pooled writer, because the generator takes an io.Writer, and a value in
+// an interface moves to the heap.
+var dwPool = sync.Pool{New: func() any { return new(deadlineWriter) }}
+
 func (d *deadlineWriter) Write(b []byte) (int, error) {
-	_ = d.rc.SetWriteDeadline(time.Now().Add(d.d)) // httptest does not support deadlines
+	if d.dl != nil {
+		_ = d.dl.SetWriteDeadline(time.Now().Add(d.d))
+	}
 	return d.w.Write(b)
+}
+
+type deadliner interface{ SetWriteDeadline(time.Time) error }
+
+// findDeadliner does what http.NewResponseController does for
+// SetWriteDeadline, without the allocation of the controller.
+func findDeadliner(w http.ResponseWriter) deadliner {
+	for {
+		switch t := w.(type) {
+		case deadliner:
+			return t
+		case interface{ Unwrap() http.ResponseWriter }:
+			w = t.Unwrap()
+		default:
+			return nil
+		}
+	}
 }

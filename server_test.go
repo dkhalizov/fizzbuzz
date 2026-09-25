@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"fizzbuzz/internal/fizzbuzz"
@@ -175,5 +176,23 @@ func TestUnroutedErrorsAreJSON(t *testing.T) {
 	}
 	if allow := do(h, http.MethodPost, "/fizzbuzz").Header().Get("Allow"); allow != "GET, HEAD, QUERY" {
 		t.Errorf("Allow = %q", allow)
+	}
+}
+
+// Through gin on a real connection, the handler must find SetWriteDeadline.
+// Without it, a client that stops reading holds a response forever.
+func TestDeadlinerFound(t *testing.T) {
+	found := make(chan bool, 1)
+	r := gin.New()
+	r.GET("/", func(c *gin.Context) { found <- findDeadliner(c.Writer) != nil })
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+	resp, err := srv.Client().Get(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if !<-found {
+		t.Fatal("no SetWriteDeadline behind the gin writer")
 	}
 }
