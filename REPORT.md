@@ -119,8 +119,8 @@ significant (p ≥ 0.05). The TCP gain is for RPS at limit=100 unless noted.
 | 22 | Rover response cache for small responses | 198k → 279k RPS at 2 cores (1 run each) | 32 MB for each loop | Not verified with benchstat |
 | 23 | Cache the most frequent large response | Calculated only (see Phase 3) | 88 MB, or 14.5 MB gzip | Not built |
 | 24 | Per-P sharding of the stats counter in the service | Not tried: the profile shows no contention (`counter.Record` 0.7%) | | Not needed |
-| 26 | Remove the request log (after 2) | −8.3% / +2.5% n.s. (p=0.052) | No record of single requests | FAILED by the rules; kept as the owner's decision |
 | 25 | fasthttp or gnet on a sub-branch | Not done. Rover replaces net/http completely and shows the limit that these libraries can approach | | Not done |
+| 26 | Remove the request log (after 2) | −8.3% / +2.5% n.s. (p=0.052) | No record of single requests | FAILED by the rules; kept as the owner's decision |
 
 ## Phase 2: small responses
 
